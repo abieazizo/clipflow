@@ -270,11 +270,11 @@ function illoFlow(): string {
   return phoneFrame(`
     <div class="ph-flow">
       <span class="ph-flow-cover"><img src="/demo/clip-squish.webp" alt="" loading="lazy" decoding="async"></span>
-      <svg class="ph-flow-lines" viewBox="0 0 120 150" fill="none" preserveAspectRatio="none">
-        <path class="ph-dash-track" d="M24 46 C 66 46, 66 50, 98 50"/>
-        <path class="ph-dash-track" d="M24 46 C 60 46, 60 86, 98 86"/>
-        <path class="ph-dash" d="M24 46 C 66 46, 66 50, 98 50"/>
-        <path class="ph-dash ph-dash-late" d="M24 46 C 60 46, 60 86, 98 86"/>
+      <svg class="ph-flow-lines" viewBox="0 0 120 100" fill="none" preserveAspectRatio="none">
+        <path class="ph-dash-track" d="M60 4 C 60 44, 30 52, 26 96"/>
+        <path class="ph-dash-track" d="M60 4 C 60 44, 90 52, 94 96"/>
+        <path class="ph-dash" d="M60 4 C 60 44, 30 52, 26 96"/>
+        <path class="ph-dash ph-dash-late" d="M60 4 C 60 44, 90 52, 94 96"/>
       </svg>
       <div class="ph-flow-targets">
         <span class="ph-tile ph-tile-ig">${icon("instagram")}${icon("check", "ph-tile-check")}</span>
@@ -435,30 +435,35 @@ export function landingPage(): string {
     <div class="container">
       <p class="eyebrow">Pricing</p>
       <h2 class="display section-title">Simple. One plan.</h2>
+      <p class="pricing-lede">Start with a free week. Keep going for $19/month, or cancel any time — no charge.</p>
       <div class="pricing-grid">
         <div class="price-card card">
-          <h3>Free trial</h3>
-          <p class="price-num display">1 week</p>
-          <p class="price-sub">Full product free for 7 days.</p>
+          <div class="price-head">
+            <h3>Free trial</h3>
+            <p class="price-num display">Free<span class="price-per">for 7 days</span></p>
+            <p class="price-sub">The entire product, unlocked. No charge until your week is up.</p>
+          </div>
           <ul class="price-list">
             <li>${icon("check")}Everything in Pro</li>
             <li>${icon("check")}No charge for 7 days</li>
             <li>${icon("check")}Cancel any time — no charge</li>
           </ul>
-          <a class="btn btn-secondary btn-block" href="/signup">Start free</a>
+          <a class="btn btn-secondary btn-block price-cta" href="/signup">Start free</a>
         </div>
         <div class="price-card card price-card-pro">
-          <span class="pill pill-live price-badge"><span class="pulse-dot"></span>ClipFlow Pro</span>
-          <h3>Pro</h3>
-          <p class="price-num display">$19<span class="price-per">/mo</span></p>
-          <p class="price-sub">Cancel anytime from the billing portal.</p>
+          <span class="price-badge">Most popular</span>
+          <div class="price-head">
+            <h3>Pro</h3>
+            <p class="price-num display">$19<span class="price-per">/ mo</span></p>
+            <p class="price-sub">Everything, unlimited. Cancel anytime from the billing portal.</p>
+          </div>
           <ul class="price-list">
             <li>${icon("check")}Instagram + TikTok posting</li>
             <li>${icon("check")}Unlimited clips</li>
             <li>${icon("check")}AI show covers</li>
             <li>${icon("check")}Priority support</li>
           </ul>
-          <a class="btn btn-primary btn-block" href="/signup">Get started ${icon("arrow-right")}</a>
+          <a class="btn btn-primary btn-block price-cta" href="/signup">Get started ${icon("arrow-right")}</a>
         </div>
       </div>
     </div>
