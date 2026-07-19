@@ -208,57 +208,66 @@ function phoneFrame(inner: string, cls = ""): string {
   </div>`;
 }
 
-/** Step 1 — the live screen with the Clip control glowing. */
+/**
+ * Hero — a real @squishycrew clip playing inside the phone. The poster (a real
+ * frame) paints instantly; the muted looped video streams in behind the LIVE
+ * pill and the glowing Clip control. This is the seller's own footage, not stock.
+ */
+function heroVideo(): string {
+  return `
+  <div class="phone phone-hero" aria-hidden="true">
+    <span class="phone-notch"></span>
+    <div class="phone-screen">
+      <video class="ph-video" autoplay muted loop playsinline preload="metadata"
+             poster="/demo/live-clip-poster.webp">
+        <source src="/demo/live-clip.mp4" type="video/mp4">
+      </video>
+      <span class="ph-live-pill"><span class="pulse-dot"></span>LIVE</span>
+      <div class="ph-rail">
+        <span class="ph-rail-btn"></span>
+        <span class="ph-rail-btn"></span>
+        <button type="button" tabindex="-1" class="ph-clip-btn">${icon("scissors")}<span class="ph-clip-label">Clip</span></button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/** Step 1 — a real live selling frame with the Clip control glowing. */
 function illoClip(): string {
   return phoneFrame(`
+    <img class="ph-shot" src="/demo/live-clip-poster.webp" alt="" loading="lazy" decoding="async">
     <span class="ph-live-pill"><span class="pulse-dot"></span>LIVE</span>
-    <div class="ph-product">
-      <span class="ph-product-glow"></span>
-      <span class="ph-product-bar"></span>
-      <span class="ph-product-bar ph-short"></span>
-    </div>
-    <div class="ph-hearts"><i></i><i></i><i></i></div>
-    <div class="ph-chat">
-      <span class="ph-chat-row" style="width:62%"></span>
-      <span class="ph-chat-row" style="width:44%"></span>
-      <span class="ph-chat-row" style="width:71%"></span>
-    </div>
     <div class="ph-rail">
       <span class="ph-rail-btn"></span>
       <span class="ph-rail-btn"></span>
       <button type="button" tabindex="-1" class="ph-clip-btn">${icon("scissors")}<span class="ph-clip-label">Clip</span></button>
-    </div>`);
+    </div>`, "phone-shot");
 }
 
-/** Step 2 — profile clips grid, one selected, Publish highlighted. */
+/** Step 2 — a grid of real clip covers, one selected, Publish highlighted. */
 function illoPublish(): string {
+  const covers = ["clip-squish", "clip-mystery", "clip-allnight", "clip-needoh"];
+  const cells = covers.map((c, i) =>
+    `<span class="ph-cell${i === 0 ? " ph-cell-selected" : ""}"><img src="/demo/${c}.webp" alt="" loading="lazy" decoding="async">${i === 0 ? icon("check", "ph-cell-check") : ""}</span>`
+  ).join("");
   return phoneFrame(`
     <div class="ph-header"><span class="ph-avatar"></span><span class="ph-header-bar"></span></div>
-    <div class="ph-grid">
-      <span class="ph-cell"></span>
-      <span class="ph-cell ph-cell-selected">${icon("check")}</span>
-      <span class="ph-cell"></span>
-      <span class="ph-cell"></span>
-    </div>
-    <span class="ph-publish">${icon("bolt")}Publish</span>`);
+    <div class="ph-grid">${cells}</div>
+    <span class="ph-publish">${icon("bolt")}Publish</span>`, "phone-shot");
 }
 
-/** Step 3 — the published clip flowing to Instagram + TikTok. */
+/** Step 3 — a real cover flowing to Instagram + TikTok. */
 function illoFlow(): string {
   return phoneFrame(`
     <div class="ph-flow">
-      <div class="ph-flow-clip">${logoMark(22)}<span class="ph-flow-bar"></span><span class="ph-flow-bar" style="width:55%"></span></div>
+      <span class="ph-flow-cover"><img src="/demo/clip-squish.webp" alt="" loading="lazy" decoding="async"></span>
       <svg class="ph-flow-lines" viewBox="0 0 120 150" fill="none" preserveAspectRatio="none">
-        <path class="ph-dash" d="M14 26 C 62 26, 62 42, 102 42"/>
-        <path class="ph-dash ph-dash-late" d="M14 26 C 56 26, 56 66, 102 66"/>
+        <path class="ph-dash" d="M22 44 C 66 44, 66 52, 100 52"/>
+        <path class="ph-dash ph-dash-late" d="M22 44 C 60 44, 60 84, 100 84"/>
       </svg>
       <div class="ph-flow-targets">
         <span class="ph-tile ph-tile-ig">${icon("instagram")}${icon("check", "ph-tile-check")}</span>
         <span class="ph-tile ph-tile-tt">${icon("tiktok")}${icon("check", "ph-tile-check")}</span>
-      </div>
-      <div class="ph-chat" aria-hidden="true">
-        <span class="ph-chat-row" style="width:58%"></span>
-        <span class="ph-chat-row" style="width:40%"></span>
       </div>
     </div>`, "phone-flow");
 }
@@ -383,7 +392,7 @@ export function landingPage(): string {
         </div>
         <p class="hero-note">${icon("check-circle")} Secure sign-in — we never see your Instagram or TikTok password.</p>
       </div>
-      <div class="hero-visual">${illoFlow()}</div>
+      <div class="hero-visual">${heroVideo()}</div>
     </div>
   </section>
 

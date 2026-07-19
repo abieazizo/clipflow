@@ -1855,42 +1855,21 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
   padding: 2px 6px; border-radius: var(--r-full);
 }
 .ph-live-pill .pulse-dot { width: 4px; height: 4px; }
-.ph-product {
-  position: absolute; top: 34%; left: 12%; width: 56%; aspect-ratio: 1;
-  background: var(--bg-3); border: 1px solid var(--border-strong);
-  border-radius: 12px; overflow: hidden;
-  display: flex; flex-direction: column; justify-content: flex-end;
-  gap: 4px; padding: 8px;
+/* Real clip media filling the screen (hero video + step frames). */
+.ph-video, .ph-shot {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; display: block; z-index: 0;
 }
-.ph-product-glow {
-  position: absolute; inset: 0;
-  background: radial-gradient(70% 70% at 40% 30%, rgba(255,90,60,.35), transparent 70%);
-  filter: blur(6px);
+/* Bottom scrim so the LIVE pill + Clip control stay legible over real footage. */
+.phone-shot .phone-screen::after,
+.phone-hero .phone-screen::after {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(0,0,0,.28) 0%, transparent 22% 62%, rgba(0,0,0,.42) 100%);
 }
-.ph-product-bar { position: relative; height: 5px; width: 70%; border-radius: 3px; background: var(--border-strong); }
-.ph-product-bar.ph-short { width: 45%; }
-.ph-chat { position: absolute; left: 9px; bottom: 12px; display: flex; flex-direction: column; gap: 5px; width: 60%; }
-.ph-chat-row { height: 8px; border-radius: 4px; background: rgba(255,255,255,.09); }
-.ph-hearts { position: absolute; right: 12px; bottom: 66px; }
-.ph-hearts i {
-  position: absolute; width: 8px; height: 8px; background: var(--ig);
-  border-radius: 50% 50% 0 50%;
-  transform: rotate(45deg);
-  opacity: .8;
-}
-.ph-hearts i:nth-child(1) { right: 0; bottom: 0; }
-.ph-hearts i:nth-child(2) { right: 9px; bottom: 14px; opacity: .5; }
-.ph-hearts i:nth-child(3) { right: 2px; bottom: 26px; opacity: .3; }
-@media (prefers-reduced-motion: no-preference) {
-  .ph-hearts i { animation: ph-heart 2.8s var(--ease) infinite; }
-  .ph-hearts i:nth-child(2) { animation-delay: .9s; }
-  .ph-hearts i:nth-child(3) { animation-delay: 1.7s; }
-  @keyframes ph-heart {
-    0% { transform: rotate(45deg) translateY(0) scale(1); opacity: .8; }
-    100% { transform: rotate(45deg) translate(-18px, -18px) scale(.7); opacity: 0; }
-  }
-}
-.ph-rail { position: absolute; right: 8px; top: 30%; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.phone-shot .phone-screen, .phone-hero .phone-screen { background: #0b0b0e; }
+.ph-live-pill, .ph-rail, .ph-header, .ph-grid, .ph-publish, .ph-flow { z-index: 2; }
+.phone-hero { --ph-w: 210px; box-shadow: var(--elev-3); }
+.ph-rail { position: absolute; right: 8px; top: 30%; display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 2; }
 .ph-rail-btn { width: 18px; height: 18px; border-radius: var(--r-full); background: rgba(255,255,255,.08); border: 1px solid var(--border-strong); }
 .ph-clip-btn {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -1912,13 +1891,17 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 .ph-header-bar { height: 6px; width: 46%; border-radius: 3px; background: rgba(255,255,255,.12); }
 .ph-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px 10px; }
 .ph-cell {
-  aspect-ratio: 9 / 14; border-radius: 8px;
-  background: linear-gradient(150deg, var(--bg-3), #201a25);
-  border: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: center;
+  position: relative; aspect-ratio: 9 / 14; border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--border); background: var(--bg-3);
 }
-.ph-cell-selected { border: 2px solid var(--accent); box-shadow: 0 0 12px rgba(255,90,60,.35); }
-.ph-cell-selected .icon { width: 14px; height: 14px; color: var(--accent); }
+.ph-cell img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ph-cell-selected { border: 2px solid var(--accent); box-shadow: 0 0 0 2px rgba(255,90,60,.25), 0 0 14px rgba(255,90,60,.45); }
+.ph-cell-check {
+  position: absolute; right: 4px; top: 4px; z-index: 2;
+  width: 15px !important; height: 15px !important;
+  background: var(--accent); color: #fff; border-radius: var(--r-full); padding: 3px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.4);
+}
 .ph-publish {
   position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
   display: inline-flex; align-items: center; gap: 4px;
@@ -1929,14 +1912,12 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 }
 .ph-publish .icon { width: 10px; height: 10px; }
 .ph-flow { position: absolute; inset: 0; }
-.ph-flow-clip {
-  position: absolute; top: 18px; left: 9px;
-  display: flex; flex-direction: column; gap: 5px;
-  width: 44%; padding: 8px; border-radius: 10px;
-  background: var(--bg-3); border: 1px solid var(--border-strong);
-  color: var(--text);
+.ph-flow-cover {
+  position: absolute; top: 16px; left: 10px; width: 42%; aspect-ratio: 9 / 14;
+  border-radius: 10px; overflow: hidden; border: 1px solid var(--border-strong);
+  box-shadow: 0 6px 18px -6px rgba(0,0,0,.6);
 }
-.ph-flow-bar { height: 5px; width: 80%; border-radius: 3px; background: var(--border-strong); }
+.ph-flow-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ph-flow-lines { position: absolute; inset: 12% 4% 8% 4%; width: 92%; height: 80%; }
 .ph-dash {
   stroke: var(--accent); stroke-width: 2; stroke-linecap: round;
