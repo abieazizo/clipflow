@@ -215,20 +215,25 @@ function phoneFrame(inner: string, cls = ""): string {
  */
 function heroVideo(): string {
   return `
-  <div class="phone phone-hero" aria-hidden="true">
-    <span class="phone-notch"></span>
-    <div class="phone-screen">
-      <video class="ph-video" autoplay muted loop playsinline preload="metadata"
-             poster="/demo/live-clip-poster.webp">
-        <source src="/demo/live-clip.mp4" type="video/mp4">
-      </video>
-      <span class="ph-live-pill"><span class="pulse-dot"></span>LIVE</span>
-      <div class="ph-rail">
-        <span class="ph-rail-btn"></span>
-        <span class="ph-rail-btn"></span>
-        <button type="button" tabindex="-1" class="ph-clip-btn">${icon("scissors")}<span class="ph-clip-label">Clip</span></button>
+  <div class="hero-stage" aria-hidden="true">
+    <span class="hero-aurora"></span>
+    <div class="phone phone-hero">
+      <span class="phone-notch"></span>
+      <div class="phone-screen">
+        <video class="ph-video" autoplay muted loop playsinline preload="metadata"
+               poster="/demo/live-clip-poster.webp">
+          <source src="/demo/live-clip.mp4" type="video/mp4">
+        </video>
+        <span class="ph-live-pill"><span class="pulse-dot"></span>LIVE</span>
+        <div class="ph-rail">
+          <span class="ph-rail-btn"></span>
+          <span class="ph-rail-btn"></span>
+          <button type="button" tabindex="-1" class="ph-clip-btn">${icon("scissors")}<span class="ph-clip-label">Clip</span></button>
+        </div>
       </div>
     </div>
+    <span class="hero-badge hero-badge-ig">${icon("instagram")}<span>Reel posted</span>${icon("check", "hero-badge-check")}</span>
+    <span class="hero-badge hero-badge-tt">${icon("tiktok")}<span>TikTok posted</span>${icon("check", "hero-badge-check")}</span>
   </div>`;
 }
 
@@ -244,31 +249,38 @@ function illoClip(): string {
     </div>`, "phone-shot");
 }
 
-/** Step 2 — a grid of real clip covers, one selected, Publish highlighted. */
+/**
+ * Step 2 — the "Generating your clip…" moment, recreated faithfully in
+ * ClipFlow's own styling over a real @squishycrew live frame. Mirrors the
+ * Whatnot clip-capture flow without copying its pixels or anyone's likeness.
+ */
 function illoPublish(): string {
-  const covers = ["clip-squish", "clip-mystery", "clip-allnight", "clip-needoh"];
-  const cells = covers.map((c, i) =>
-    `<span class="ph-cell${i === 0 ? " ph-cell-selected" : ""}"><img src="/demo/${c}.webp" alt="" loading="lazy" decoding="async">${i === 0 ? icon("check", "ph-cell-check") : ""}</span>`
-  ).join("");
   return phoneFrame(`
-    <div class="ph-header"><span class="ph-avatar"></span><span class="ph-header-bar"></span></div>
-    <div class="ph-grid">${cells}</div>
-    <span class="ph-publish">${icon("bolt")}Publish</span>`, "phone-shot");
+    <img class="ph-shot ph-shot-dim" src="/demo/live-clip-poster.webp" alt="" loading="lazy" decoding="async">
+    <div class="ph-gen">
+      <span class="ph-gen-grip"></span>
+      <div class="ph-gen-card"><span class="ph-spinner"></span></div>
+      <span class="ph-gen-label">Generating your clip…</span>
+      <span class="ph-gen-note">${icon("lock")}Saved to your profile</span>
+    </div>`, "phone-shot");
 }
 
-/** Step 3 — a real cover flowing to Instagram + TikTok. */
+/** Step 3 — the finished clip auto-posting to Instagram + TikTok, both confirmed. */
 function illoFlow(): string {
   return phoneFrame(`
     <div class="ph-flow">
       <span class="ph-flow-cover"><img src="/demo/clip-squish.webp" alt="" loading="lazy" decoding="async"></span>
       <svg class="ph-flow-lines" viewBox="0 0 120 150" fill="none" preserveAspectRatio="none">
-        <path class="ph-dash" d="M22 44 C 66 44, 66 52, 100 52"/>
-        <path class="ph-dash ph-dash-late" d="M22 44 C 60 44, 60 84, 100 84"/>
+        <path class="ph-dash-track" d="M24 46 C 66 46, 66 50, 98 50"/>
+        <path class="ph-dash-track" d="M24 46 C 60 46, 60 86, 98 86"/>
+        <path class="ph-dash" d="M24 46 C 66 46, 66 50, 98 50"/>
+        <path class="ph-dash ph-dash-late" d="M24 46 C 60 46, 60 86, 98 86"/>
       </svg>
       <div class="ph-flow-targets">
         <span class="ph-tile ph-tile-ig">${icon("instagram")}${icon("check", "ph-tile-check")}</span>
         <span class="ph-tile ph-tile-tt">${icon("tiktok")}${icon("check", "ph-tile-check")}</span>
       </div>
+      <span class="ph-flow-status">${icon("check-circle")}Posted everywhere</span>
     </div>`, "phone-flow");
 }
 
