@@ -1,0 +1,26 @@
+[
+  {
+    "whatnotUsername": "squishycrew",
+    "enabled": true,
+    "captionTemplate": "{title}\n\nCatch me LIVE on Whatnot 🔴 @{username}\n{hashtags}",
+    "hashtags": ["squishy", "sensorytoys", "whatnot", "fyp", "smallbusiness"],
+    "instagram": {
+      "igUserId": "REPLACE_WITH_IG_BUSINESS_ACCOUNT_ID",
+      "accessToken": "REPLACE_WITH_LONG_LIVED_TOKEN",
+      "graphVersion": "v21.0"
+    },
+    "tiktok": {
+      "accessToken": "REPLACE_WITH_TIKTOK_ACCESS_TOKEN"
+    }
+  },
+  {
+    "whatnotUsername": "some-other-seller",
+    "enabled": false,
+    "captionTemplate": "{title}\n{hashtags}",
+    "hashtags": ["whatnot", "live"],
+    "instagram": {
+      "igUserId": "...",
+      "accessToken": "..."
+    }
+  }
+]

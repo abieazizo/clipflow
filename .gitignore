@@ -1,0 +1,7 @@
+node_modules/
+clips/
+data/
+dist/
+users.json
+.env
+*.log

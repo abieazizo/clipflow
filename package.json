@@ -1,0 +1,29 @@
+{
+  "name": "clipflow-engine",
+  "version": "0.2.0",
+  "description": "ClipFlow — watches Whatnot sellers' published clips and auto-posts them to Instagram + TikTok via Zernio.",
+  "type": "module",
+  "scripts": {
+    "app": "tsx src/server.ts",
+    "dev": "tsx src/server.ts",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "start:prod": "node dist/app.js",
+    "doctor": "tsx src/doctor.ts",
+    "check:zernio": "tsx src/check-zernio.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^1.0.2",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.6",
+    "better-sqlite3": "^12.11.1",
+    "express": "^5.2.1",
+    "undici": "^6.19.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.4"
+  }
+}
