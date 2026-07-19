@@ -344,6 +344,9 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
   /* The ⓘ help affordance is a keyboard/tap target on touch (hover is absent). */
   .mode-info { min-width: 44px; min-height: 44px; padding: var(--sp-3); }
   .input, .textarea { min-height: 48px; }
+  /* Account-menu rows + trigger appear on every app-shell page — clear 44px on touch. */
+  .dropdown-trigger { min-height: 44px; }
+  .dropdown-item { min-height: 44px; }
 }
 .btn-lg { min-height: 48px; padding: var(--sp-4) var(--sp-8); font-size: var(--fs-3); border-radius: var(--r-lg); }
 .btn-block { width: 100%; }
