@@ -136,10 +136,18 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { scroll-behavior: auto; }
+html {
+  scroll-behavior: auto;
+  -webkit-text-size-adjust: 100%;      /* iOS: never auto-inflate text in landscape */
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;  /* iOS: no grey flash box on tap */
+}
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
 }
+/* Interactive elements get their own :active feedback, so killing the iOS
+   tap-flash above loses nothing — and inputs keep their caret/selection. */
+button, a, .btn, summary, [role="button"] { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
 body {
   margin: 0;
@@ -272,6 +280,9 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 .container {
   width: min(1120px, 100% - 2 * var(--sp-6));
   margin-inline: auto;
+  /* Landscape iPhone: keep content out from under the notch. 0 elsewhere. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* --------------------------------------------------------------------------
@@ -606,7 +617,7 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 
 .toast-stack {
   position: fixed;
-  bottom: var(--sp-6);
+  bottom: calc(var(--sp-6) + env(safe-area-inset-bottom));  /* clear the iPhone home indicator */
   right: var(--sp-6);
   z-index: 90;
   display: flex;
@@ -919,6 +930,7 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
+  padding-top: env(safe-area-inset-top);  /* clear the Dynamic Island / notch */
 }
 .site-nav-inner {
   display: flex;
@@ -1101,7 +1113,7 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 .cta-title { font-size: clamp(var(--fs-5), 3.4vw, var(--fs-7)); margin-bottom: var(--sp-3); }
 .cta-sub { color: var(--text-muted); }
 
-.site-footer { border-top: 1px solid var(--border); padding: var(--sp-9) 0; margin-top: var(--sp-11); }
+.site-footer { border-top: 1px solid var(--border); padding: var(--sp-9) 0; padding-bottom: max(var(--sp-9), env(safe-area-inset-bottom)); margin-top: var(--sp-11); }
 .site-footer-inner {
   display: flex;
   align-items: center;
