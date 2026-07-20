@@ -159,14 +159,15 @@ html {
   scroll-behavior: auto;
   -webkit-text-size-adjust: 100%;      /* iOS: never auto-inflate text in landscape */
   text-size-adjust: 100%;
-  -webkit-tap-highlight-color: transparent;  /* iOS: no grey flash box on tap */
+  /* branded tap tint — a soft coral flash instead of the default grey box */
+  -webkit-tap-highlight-color: rgba(255, 90, 60, .14);
 }
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
 }
-/* Interactive elements get their own :active feedback, so killing the iOS
-   tap-flash above loses nothing — and inputs keep their caret/selection. */
-button, a, .btn, summary, [role="button"] { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+/* Interactive elements inherit the branded tap tint above and get explicit
+   :active pressed states (see the touch-feedback block in v6). */
+button, a, .btn, summary, [role="button"] { touch-action: manipulation; }
 
 body {
   margin: 0;
@@ -337,29 +338,35 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 .btn:disabled, .btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; pointer-events: none; }
 
 .btn-sm { min-height: 36px; padding: var(--sp-2) var(--sp-4); font-size: var(--fs-1); }
-/* Touch devices: guarantee a 44px minimum tap target for every compact control. */
+/* Touch devices: a COMFORTABLE 48px minimum tap target for every compact
+   control — thumbs are bigger than the 44px WCAG floor. */
 @media (pointer: coarse) {
-  .btn-sm { min-height: 44px; }
-  .btn-icon { width: 44px; height: 44px; }
-  .chip, .chip-token, .chip-hashtag { min-height: 44px; }
+  .btn { min-height: 48px; }
+  .btn-sm { min-height: 48px; }
+  .btn-icon { width: 48px; height: 48px; }
+  .chip, .chip-token, .chip-hashtag { min-height: 48px; }
   .chip-input { min-height: 48px; }
   /* The segmented controls: the actual interactive buttons (not just the
-     container) must clear 44px, so the whole pill grows to fit them. */
-  .mode-seg { height: 50px; }
-  .mode-seg-opt { height: 44px; }
+     container) must clear 48px, so the whole pill grows to fit them. */
+  .mode-seg { height: 54px; }
+  .mode-seg-opt { height: 48px; }
   .seg { padding: 3px; }
-  .seg-btn, .seg > * { min-height: 44px; }
+  .seg-btn, .seg > * { min-height: 48px; }
   /* The ⓘ help affordance is a keyboard/tap target on touch (hover is absent). */
-  .mode-info { min-width: 44px; min-height: 44px; padding: var(--sp-3); }
+  .mode-info { min-width: 48px; min-height: 48px; padding: var(--sp-3); }
   /* 16px is the exact threshold below which iOS Safari zooms the page on input
      focus — at 14px, tapping the signup email/password field zoomed + shifted
      the whole layout. Touch-scoped, so desktop keeps its 14px inputs. */
   .input, .textarea { min-height: 48px; font-size: 16px; }
-  /* Account-menu rows + trigger appear on every app-shell page — clear 44px on touch. */
-  .dropdown-trigger { min-height: 44px; }
-  .dropdown-item { min-height: 44px; }
-  /* Mobile nav rows a thumb taps to move between pages. */
-  .side-link { min-height: 44px; }
+  /* Account-menu rows + trigger appear on every app-shell page. */
+  .dropdown-trigger { min-height: 48px; }
+  .dropdown-item { min-height: 48px; }
+  .side-link { min-height: 48px; }
+  .preview-tab { min-height: 48px; }
+  .chip-filter { min-height: 48px; }
+  .hero-word { min-height: 44px; padding: var(--sp-2) var(--sp-4); }
+  .idea-chip, .chip-suggest { min-height: 44px; }
+  .faq-q { min-height: 48px; }
 }
 .btn-lg { min-height: 48px; padding: var(--sp-4) var(--sp-8); font-size: var(--fs-3); border-radius: var(--r-lg); }
 .btn-block { width: 100%; }
@@ -759,32 +766,6 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
   font-weight: 900;
   letter-spacing: .04em;
 }
-
-/* --------------------------------------------------------------------------
-   tooltip
-   -------------------------------------------------------------------------- */
-
-[data-tip] { position: relative; }
-[data-tip]::after {
-  content: attr(data-tip);
-  position: absolute;
-  bottom: calc(100% + var(--sp-2));
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--bg-3);
-  border: 1px solid var(--border-strong);
-  color: var(--text);
-  font-size: var(--fs-0);
-  font-weight: 500;
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-sm);
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dur-2) var(--ease);
-  z-index: 50;
-}
-[data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; }
 
 /* --------------------------------------------------------------------------
    banner
@@ -1291,15 +1272,6 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 }
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--sp-3); }
 .topbar .engine-ind { padding: 0; }
-.mobile-nav {
-  display: none;
-  flex-direction: column;
-  gap: var(--sp-1);
-  padding: var(--sp-4) var(--sp-5);
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-1);
-}
-.mobile-nav.is-open { display: flex; }
 
 .shell-main { flex: 1; min-width: 0; }
 .content {
@@ -2347,7 +2319,12 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
   background: linear-gradient(to top, rgba(0,0,0,.72), rgba(0,0,0,.15) 55%, transparent);
   opacity: 0; transition: opacity var(--dur-2) var(--ease);
 }
-.thumb-card:hover .thumb-hover, .thumb-card:focus-within .thumb-hover { opacity: 1; }
+/* hover-reveal is a DESKTOP luxury — touch gets the always-visible variant
+   (see the coarse-pointer override in v6); keyboard focus works everywhere */
+@media (hover: hover) {
+  .thumb-card:hover .thumb-hover { opacity: 1; }
+}
+.thumb-card:focus-within .thumb-hover { opacity: 1; }
 .thumb-hover .btn { width: 100%; justify-content: center; }
 .thumb-meta { padding: var(--sp-4) var(--sp-5) var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); }
 .thumb-headline {
@@ -2358,11 +2335,26 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 .empty-icon { width: 40px; height: 40px; color: var(--text-faint); }
 
 @media (max-width: 860px) {
-  .studio-grid { grid-template-columns: 1fr; }
-  .studio-preview { order: -1; } /* preview on top on mobile */
+  /* Stack the studio with the LIVE PREVIEW pinned on top while you scroll the
+     controls — flex (not grid) so position:sticky can travel the whole column.
+     align-items must reset to stretch (the desktop grid uses start) so the
+     preview strip spans the full width and occludes what scrolls beneath it. */
+  .studio-grid { display: flex; flex-direction: column; align-items: stretch; }
+  .studio-preview {
+    order: -1;
+    position: sticky;
+    top: calc(60px + env(safe-area-inset-top)); /* below the sticky topbar */
+    z-index: 20;
+    background: var(--bg);
+    margin: 0 calc(-1 * var(--sp-5));
+    padding: var(--sp-3) var(--sp-5);
+    border-bottom: 1px solid var(--border);
+  }
   .preview-sticky { position: static; }
-  .preview-frame { max-width: 300px; margin: 0 auto; }
-  .style-grid { grid-template-columns: 1fr; }
+  .preview-frame { max-width: 180px; margin: 0 auto; }
+  .preview-hint { display: none; }
+  /* big-tap 2×2 style swatches, not a 4-tall stack */
+  .style-grid { grid-template-columns: 1fr 1fr; }
 }
 
 /* ---- status page ------------------------------------------------------------ */
@@ -2757,8 +2749,10 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 @media (prefers-reduced-motion: no-preference) {
   .help-pop { animation: dropdown-in var(--dur-2) var(--ease); }
 }
-/* popovers inside a section heading shouldn't inherit display sizing */
-.section-h .help-tip, .field-label .help-tip { margin-left: var(--sp-1); }
+/* help tips sit BESIDE labels/headings (never inside — a labelable button in a
+   <label> corrupts the field's accessible name), grouped by these rows */
+.label-row { display: flex; align-items: center; gap: var(--sp-2); }
+.section-h-row { display: inline-flex; align-items: center; gap: var(--sp-3); min-width: 0; }
 
 /* ---- "Need help?" launcher + panel ------------------------------------------ */
 
@@ -2840,9 +2834,12 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 .help-faq .faq-q { font-size: var(--fs-2); padding: var(--sp-4) var(--sp-5); }
 .help-faq .faq-a p { font-size: var(--fs-1); padding: 0 var(--sp-5) var(--sp-4); }
 
-/* keep toasts clear of the launcher wherever it exists */
-body:has(.help-launcher:not([hidden])) .toast-stack {
-  bottom: calc(var(--sp-6) + 60px + env(safe-area-inset-bottom));
+/* keep toasts clear of the launcher wherever it exists (desktop; the mobile
+   offsets that also clear the tab bar live in the v6 mobile-first section) */
+@media (min-width: 960px) {
+  body:has(.help-launcher:not([hidden])) .toast-stack {
+    bottom: calc(var(--sp-6) + 60px + env(safe-area-inset-bottom));
+  }
 }
 
 /* ---- shared sheet (demo + how-to) ------------------------------------------- */
@@ -2907,6 +2904,10 @@ body:has(.help-launcher:not([hidden])) .toast-stack {
   padding: var(--sp-5) var(--sp-3) var(--sp-3);
   background: linear-gradient(to top, rgba(0, 0, 0, .78), transparent);
   color: #fff; font-size: 10px; font-weight: 700; line-height: 1.3;
+}
+/* the clamp lives on an inner element — clamped overflow crops at the padding
+   box, so clamping the padded wrapper let a third line bleed into the padding */
+.demo-clip-title-text {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .demo-caption {
@@ -2946,8 +2947,328 @@ body:has(.help-launcher:not([hidden])) .toast-stack {
 /* ---- touch targets for the new controls -------------------------------------- */
 
 @media (pointer: coarse) {
-  .help-tip-btn { width: 44px; height: 44px; margin: -10px 0; }
+  .help-tip-btn { width: 48px; height: 48px; margin: -12px 0; }
   .help-launcher { min-height: 48px; }
-  .help-setup-row a, .help-links a { min-height: 44px; }
-  .setup-cta { min-height: 44px; }
+  .help-setup-row a, .help-links a { min-height: 48px; }
+  .setup-cta { min-height: 48px; }
+  /* sheet/chooser close controls must clear 48px on touch too */
+  .chooser-close { width: 48px; height: 48px; }
+}
+
+/* ==========================================================================
+   v6 — MOBILE-FIRST: the phone is the primary device. Bottom tab bar,
+   bottom sheets everywhere, touch-native feedback, thumb-zone layout.
+   Base rules here target the phone; @media (min-width: 960px) adapts UP.
+   ========================================================================== */
+
+:root { --tabbar-h: 56px; }
+
+/* ---- touch pressed states (hover doesn't exist on a phone) --------------- */
+
+@media (hover: none) {
+  .btn:active:not(:disabled) { transform: scale(.97); filter: brightness(1.08); }
+  .side-link:active, .menu-link:active, .dropdown-item:active,
+  .help-links a:active, .help-setup-row a:active, .faq-q:active { background: var(--tint-active); }
+  .tab-link:active { color: var(--text); }
+  .clip-card:active, .conn-card:active, .stat-card:active { transform: scale(.99); }
+  .preset-card:active, .style-card:active { transform: scale(.985); border-color: var(--border-strong); }
+  .chip-token:active, .chip-suggest:active, .idea-chip:active, .chip-filter:active,
+  .hero-word:active { background: var(--tint-active); color: var(--text); }
+  .upload-tile:active { border-color: var(--accent); }
+}
+
+/* covers: the Download/Regenerate/Delete overlay is ALWAYS visible on touch —
+   never gated behind a hover that can't happen (either signal counts) */
+@media (hover: none), (pointer: coarse) {
+  .thumb-hover {
+    opacity: 1;
+    background: linear-gradient(to top, rgba(0, 0, 0, .8), rgba(0, 0, 0, .28) 55%, transparent);
+  }
+}
+
+/* iOS never zooms a ≥16px input — enforce on every field at phone widths,
+   whatever the pointer reports */
+@media (max-width: 959px) {
+  .input, .textarea, .select, .chip-input-field { font-size: 16px; min-height: 48px; }
+}
+
+/* ---- bottom tab bar (the app's primary navigation on a phone) ------------ */
+
+.tab-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 82;
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-1);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom); /* clears the iPhone home bar */
+}
+.tab-link {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tabbar-h);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  position: relative;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--text-faint);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease);
+}
+.tab-link .icon { width: 22px; height: 22px; }
+.tab-link.is-active { color: var(--accent); }
+.tab-link.is-active::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 28px; height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--accent);
+}
+.tab-link:focus-visible { box-shadow: var(--focus-ring); border-radius: var(--r-sm); }
+
+/* desktop keeps the sidebar; the tab bar + its sheets disappear entirely */
+@media (min-width: 960px) {
+  .tab-bar, .menu-sheet, .menu-scrim { display: none !important; }
+}
+
+/* The base `body > * { z-index: 1 }` rule traps overlay ROOTS in a z-1
+   stacking context, which would let the fixed tab bar (z 82) paint over —
+   and swallow taps on — the bottom edge of every sheet/modal. Lift the roots
+   themselves above it. */
+#modal-root { position: relative; z-index: 95; }
+.help-root { position: relative; z-index: 89; }
+
+/* clear the tab bar: content, toasts, and the help launcher all sit above it */
+@media (max-width: 959px) {
+  .content { padding-bottom: calc(var(--sp-11) + var(--tabbar-h) + env(safe-area-inset-bottom)); }
+  .topbar { padding-top: env(safe-area-inset-top); }
+  body:has(.tab-bar) .toast-stack {
+    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 76px);
+  }
+  body:has(.tab-bar) .help-launcher {
+    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + var(--sp-4));
+  }
+}
+
+/* ---- sheets: the shared bottom-sheet grammar ----------------------------- */
+
+.sheet-grip {
+  display: none;
+  width: 36px; height: 4px;
+  border-radius: 2px;
+  background: var(--border-strong);
+  margin: 0 auto var(--sp-4);
+  flex: none;
+}
+body.sheet-open { overflow: hidden; }
+
+.menu-scrim, .help-scrim {
+  position: fixed; inset: 0;
+  z-index: 88;
+  background: rgba(10, 10, 12, .62);
+}
+.menu-sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 89;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-bottom: 0;
+  border-top-color: var(--hairline);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: var(--elev-3);
+  padding: var(--sp-4) var(--sp-5) calc(var(--sp-5) + env(safe-area-inset-bottom));
+  max-height: 90dvh;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.menu-sheet .sheet-grip { display: block; }
+.menu-id {
+  display: flex; align-items: center; gap: var(--sp-4);
+  padding: var(--sp-2) var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--sp-3);
+}
+.avatar-lg { width: 44px; height: 44px; font-size: var(--fs-2); }
+.menu-id-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.menu-id-text strong { font-size: var(--fs-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-id .engine-ind { padding: 0; flex: none; }
+.menu-links { display: flex; flex-direction: column; }
+.menu-link {
+  display: flex; align-items: center; gap: var(--sp-4);
+  min-height: 52px;
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  font-size: var(--fs-3);
+  font-weight: 500;
+  color: var(--text);
+}
+.menu-link .icon { width: 20px; height: 20px; color: var(--text-muted); flex: none; }
+.menu-link-caret { margin-left: auto; width: 16px !important; height: 16px !important; color: var(--text-faint); }
+.menu-link.is-active { background: var(--bg-3); }
+.menu-link-out { color: var(--danger); margin-top: var(--sp-2); border-top: 1px solid var(--border); border-radius: 0 0 var(--r-md) var(--r-md); }
+.menu-link-out .icon { color: var(--danger); }
+
+/* the "?" answer, served as a sheet on phones */
+.tip-sheet {
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-top-color: var(--hairline);
+  box-shadow: var(--elev-3);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  width: min(420px, 94vw);
+}
+.tip-sheet .help-pop {
+  position: static !important;
+  width: auto !important;
+  border: 0; box-shadow: none; background: transparent; padding: 0;
+  animation: none;
+  display: flex; flex-direction: column; gap: var(--sp-4);
+  font-size: var(--fs-2);
+}
+.tip-sheet .help-pop strong { font-size: var(--fs-4); }
+.tip-sheet .help-pop a { min-height: 44px; align-items: center; }
+
+/* phone: every overlay is a bottom sheet — thumb-dismissable, ≤90dvh,
+   internal momentum scroll, home-bar safe */
+@media (max-width: 959px) {
+  .modal-backdrop { align-items: flex-end; padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .modal {
+    width: 100%;
+    background: var(--bg-2);
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    border-bottom: 0;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    padding-bottom: calc(var(--sp-7) + env(safe-area-inset-bottom));
+    max-height: 90dvh;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .demo, .howto, .tip-sheet {
+    width: 100%;
+    max-width: none;
+    max-height: 90dvh;
+    border-bottom: 0;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    padding-bottom: calc(var(--sp-8) + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+  }
+  .demo .sheet-grip, .howto .sheet-grip, .tip-sheet .sheet-grip { display: block; }
+  /* the cover chooser goes FULL SCREEN — comparing two covers needs the room */
+  .chooser-backdrop { padding: 0; }
+  .chooser {
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    padding-top: calc(var(--sp-6) + env(safe-area-inset-top));
+    padding-bottom: calc(var(--sp-7) + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+  }
+  /* "Need help?" becomes a full bottom sheet with grip + scrim */
+  .help-panel {
+    left: 0; right: 0; bottom: 0;
+    width: 100%;
+    max-height: 85dvh;
+    border-bottom: 0;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    padding-bottom: calc(var(--sp-6) + env(safe-area-inset-bottom));
+    z-index: 89;
+    -webkit-overflow-scrolling: touch;
+  }
+  .help-panel .sheet-grip { display: block; }
+}
+@media (max-width: 959px) and (prefers-reduced-motion: no-preference) {
+  .modal, .demo, .howto, .tip-sheet, .help-panel, .menu-sheet, .chooser {
+    animation: sheet-up .28s var(--ease);
+  }
+  @keyframes sheet-up { from { transform: translateY(28px); opacity: .5; } }
+}
+@media (min-width: 960px) { .help-grip { display: none; } }
+
+/* ---- phone layout: key screens as a clean narrow column ------------------ */
+
+/* status pills wrap, never overflow */
+.page-head-status { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+
+@media (max-width: 700px) {
+  /* connect actions become full-width thumb buttons */
+  .conn-actions { flex-direction: column; align-items: stretch; }
+  .conn-actions .btn { width: 100%; justify-content: center; }
+  .conn-actions .pill { align-self: flex-start; }
+  /* the check button is THE thumb action */
+  .check-btn { width: 100%; justify-content: center; }
+  /* every explicit save is a full-width thumb button too */
+  .custom-editor .btn { align-self: stretch; width: 100%; justify-content: center; }
+  .account-card .btn:not(.btn-ghost) { width: 100%; justify-content: center; }
+  .account-card-actions { flex-direction: column; align-items: stretch; }
+}
+
+/* history: full-width cards with a visible Retry (no hover anywhere) */
+@media (max-width: 560px) {
+  .hist-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3) var(--sp-4); }
+  .hist-main { min-width: 0; }
+  .hist-title { max-width: none; }
+  .hist-retry-form { grid-column: 1 / -1; }
+  .hist-retry-form .btn { width: 100%; }
+}
+
+/* wizard: full-screen steps, one thing per screen, giant thumb buttons */
+@media (max-width: 640px) {
+  .wizard-wrap { padding: 0; align-items: stretch; }
+  .wizard {
+    max-width: none;
+    width: 100%;
+    min-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: calc(var(--sp-5) + env(safe-area-inset-top)) var(--sp-5) 0;
+  }
+  .wiz-step { flex: 1; }
+  .wiz-foot {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background: var(--bg-1);
+    margin: 0 calc(-1 * var(--sp-5));
+    padding: var(--sp-4) var(--sp-5) calc(var(--sp-4) + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+  }
+}
+
+/* landing/auth/legal safe areas on notched phones */
+@media (max-width: 959px) {
+  .auth-wrap { padding-top: calc(var(--sp-8) + env(safe-area-inset-top)); padding-bottom: calc(var(--sp-8) + env(safe-area-inset-bottom)); }
+  .site-footer { padding-bottom: calc(var(--sp-9) + env(safe-area-inset-bottom)); }
+}
+
+/* ---- cascade-winning touch overrides (this file's base rules for these
+   controls appear LATER than the early coarse block, so they must be
+   re-asserted here at the end to actually apply on phones) ----------------- */
+
+@media (pointer: coarse) {
+  .mode-seg { height: 54px; }
+  .mode-seg-opt { height: 48px; }
+}
+@media (max-width: 700px) {
+  /* the ≤560 rule sets flex:1 (basis 0), which overrides width — a 100% basis
+     forces the Check button onto its own full row in the actions flexbox */
+  .check-btn { flex: 1 1 100%; }
 }

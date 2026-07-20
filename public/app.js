@@ -359,24 +359,72 @@
     });
   });
 
-  // -------------------------------------------------------------- mobile nav
+  // ------------------------------------------------ mobile menu bottom sheet
+  //
+  // The bottom tab bar's Menu tab opens a native-style sheet (account identity
+  // + secondary nav). Scrim tap, Escape, and a swipe-down on the grip all
+  // dismiss it; body scroll locks while it's open.
 
-  var navBtn = document.querySelector("[data-mobile-nav]");
-  var mobileNav = document.getElementById("mobile-nav");
-  if (navBtn && mobileNav) {
-    navBtn.hidden = false;
-    mobileNav.hidden = false; // visibility handled by .is-open + CSS
-    navBtn.addEventListener("click", function () {
-      var open = mobileNav.classList.toggle("is-open");
-      navBtn.setAttribute("aria-expanded", String(open));
-      navBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+  function isMobileViewport() {
+    return window.matchMedia("(max-width: 959px)").matches;
+  }
+
+  // Swipe-down-to-dismiss, attached to a sheet's grip strip only (never the
+  // scrollable body, so it can't fight with internal scrolling).
+  function sheetSwipe(sheetEl, grip, onDismiss) {
+    if (!grip) return;
+    var startY = null, curY = 0;
+    grip.addEventListener("touchstart", function (e) {
+      startY = e.touches[0].clientY; curY = 0;
+      sheetEl.style.transition = "none";
+    }, { passive: true });
+    grip.addEventListener("touchmove", function (e) {
+      if (startY == null) return;
+      curY = Math.max(0, e.touches[0].clientY - startY);
+      sheetEl.style.transform = "translateY(" + curY + "px)";
+    }, { passive: true });
+    grip.addEventListener("touchend", function () {
+      sheetEl.style.transition = "";
+      if (curY > 70) { sheetEl.style.transform = ""; onDismiss(); }
+      else { sheetEl.style.transform = ""; }
+      startY = null; curY = 0;
     });
-    mobileNav.addEventListener("click", function (e) {
-      if (e.target.closest("a")) {
-        mobileNav.classList.remove("is-open");
-        navBtn.setAttribute("aria-expanded", "false");
+  }
+
+  var menuBtn = document.querySelector("[data-menu-open]");
+  var menuSheetEl = document.getElementById("menu-sheet");
+  var menuScrim = document.querySelector("[data-menu-scrim]");
+  if (menuBtn && menuSheetEl && menuScrim) {
+    var menuLastFocus = null;
+    var onMenuKey = function (e) {
+      if (e.key === "Escape") { e.preventDefault(); setMenuOpen(false); return; }
+      if (e.key !== "Tab") return;
+      var f = menuSheetEl.querySelectorAll("a[href], button");
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (!menuSheetEl.contains(document.activeElement)) { e.preventDefault(); first.focus(); return; }
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    var setMenuOpen = function (open) {
+      menuSheetEl.hidden = !open;
+      menuScrim.hidden = !open;
+      menuSheetEl.style.transform = "";
+      menuBtn.setAttribute("aria-expanded", String(open));
+      document.body.classList.toggle("sheet-open", open);
+      if (open) {
+        menuLastFocus = document.activeElement;
+        document.addEventListener("keydown", onMenuKey, true);
+        var f = menuSheetEl.querySelector("a[href], button");
+        if (f) f.focus();
+      } else {
+        document.removeEventListener("keydown", onMenuKey, true);
+        if (menuLastFocus && menuLastFocus.focus) menuLastFocus.focus();
       }
-    });
+    };
+    menuBtn.addEventListener("click", function () { setMenuOpen(menuSheetEl.hidden); });
+    menuScrim.addEventListener("click", function () { setMenuOpen(false); });
+    sheetSwipe(menuSheetEl, menuSheetEl.querySelector("[data-sheet-grip]"), function () { setMenuOpen(false); });
   }
 
   // ----------------------------------------------- wizard: live username tidy
@@ -668,16 +716,29 @@
   // (the sample-post demo and the how-to-clip steps). Escape, backdrop click,
   // and any [data-*-close] button all close it; focus returns where it was.
 
-  function openSheet(node) {
+  function openSheet(node, opts) {
+    opts = opts || {};
     if (!modalRoot) return null;
     var previous = document.activeElement;
     var backdrop = document.createElement("div");
     backdrop.className = "modal-backdrop sheet-backdrop";
     backdrop.appendChild(node);
+    // On a phone this renders as a bottom sheet — give it a grip strip that
+    // supports swipe-down-to-dismiss, and lock the page scroll behind it.
+    if (isMobileViewport()) {
+      var grip = document.createElement("span");
+      grip.className = "sheet-grip";
+      grip.setAttribute("aria-hidden", "true");
+      node.insertBefore(grip, node.firstChild);
+      sheetSwipe(node, grip, function () { close(); });
+    }
+    document.body.classList.add("sheet-open");
     function close() {
       document.removeEventListener("keydown", onKey, true);
+      document.body.classList.remove("sheet-open");
       backdrop.remove();
       if (previous && previous.focus) previous.focus();
+      if (opts.onClose) opts.onClose();
     }
     function onKey(e) {
       if (e.key === "Escape") { e.preventDefault(); close(); return; }
@@ -685,6 +746,8 @@
       var focusables = backdrop.querySelectorAll("button, a[href], input, summary");
       if (!focusables.length) return;
       var first = focusables[0], last = focusables[focusables.length - 1];
+      // Focus escaped the sheet (e.g. a click on non-focusable prose) — pull it back.
+      if (!backdrop.contains(document.activeElement)) { e.preventDefault(); first.focus(); return; }
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     }
@@ -704,6 +767,14 @@
     }).catch(function () { /* purely cosmetic state — never bother the user */ });
   }
 
+  // Screen-reader announcement via a live region that exists at load —
+  // role="status" on freshly-rendered banners never announces on its own.
+  function announce(text) {
+    var live = document.getElementById("sr-live");
+    if (!live) return;
+    window.setTimeout(function () { live.textContent = text; }, 500);
+  }
+
   // -------------------------------------------------- guided-setup checklist
 
   // Progress bar fills in from zero on load — the "you're getting somewhere"
@@ -716,6 +787,43 @@
       window.requestAnimationFrame(function () { setupFill.style.width = fillTarget; });
     });
   }
+
+  // Live checklist updates: when a step completes via an AJAX save (username,
+  // caption style), check it off in place — no reload needed to see progress.
+  var CHECK_SVG = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4.5 12.8 4.8 4.7L19.5 6.5"/></svg>';
+  function markSetupStep(index) {
+    var card = document.getElementById("get-started");
+    if (!card) return;
+    var steps = card.querySelectorAll(".setup-step");
+    var step = steps[index - 1];
+    if (!step || step.classList.contains("is-done")) return;
+    step.classList.add("is-done");
+    var num = step.querySelector(".setup-num");
+    if (num) num.innerHTML = CHECK_SVG;
+    var vh = step.querySelector(".visually-hidden");
+    if (vh) vh.textContent = "Done: ";
+    var cta = step.querySelector(".setup-cta");
+    if (cta) {
+      var tag = document.createElement("span");
+      tag.className = "setup-done-tag";
+      tag.innerHTML = ICONS.success + "Done";
+      cta.replaceWith(tag);
+    }
+    var done = card.querySelectorAll(".setup-step.is-done").length;
+    var fill = card.querySelector("[data-setup-fill]");
+    if (fill) fill.style.width = (done / steps.length) * 100 + "%";
+    var label = card.querySelector(".setup-progress-label");
+    if (label) label.textContent = done + " of " + steps.length + " done";
+    var bar = card.querySelector(".setup-progress");
+    if (bar) bar.setAttribute("aria-valuenow", String(done));
+    var title = card.querySelector("#setup-title");
+    if (title) {
+      title.textContent = done === steps.length ? "That's everything — you're all set 🎉"
+        : done === steps.length - 1 ? "One step to go"
+        : "Nice — " + done + " of " + steps.length + " done";
+    }
+  }
+  window.__markSetupStep = markSetupStep;
 
   // Checklist CTAs that jump to a section AND land focus in the right field.
   document.querySelectorAll("[data-setup-goto]").forEach(function (a) {
@@ -733,6 +841,7 @@
   var setupDoneCard = document.querySelector("[data-setup-complete]");
   if (setupDoneCard) {
     postMilestone("setup-seen", setupDoneCard.getAttribute("data-csrf") || "");
+    announce("Setup complete — you're all set.");
     var dismissBtn = setupDoneCard.querySelector("[data-setup-dismiss]");
     if (dismissBtn) dismissBtn.addEventListener("click", function () {
       if (reducedMotion()) { setupDoneCard.remove(); return; }
@@ -797,6 +906,7 @@
   var celebrateEl = document.querySelector("[data-celebrate]");
   if (celebrateEl) {
     postMilestone("first-post", celebrateEl.getAttribute("data-csrf") || "");
+    announce("Your first clip is live! It's posted and out in the world.");
     if (!reducedMotion()) {
       var burst = document.createElement("div");
       burst.className = "confetti";
@@ -835,11 +945,42 @@
       e.stopPropagation();
       var wasOpen = openTip && openTip.btn === tipBtn;
       closeTip();
-      if (!wasOpen) {
+      if (wasOpen) return;
+      // Phones get a bottom SHEET (popovers clip and demand precision); the
+      // pop element itself rides inside it and is returned home on close.
+      if (isMobileViewport()) {
         tipBtn.setAttribute("aria-expanded", "true");
+        var holder = document.createElement("div");
+        holder.className = "tip-sheet";
+        holder.appendChild(pop);
         pop.hidden = false;
-        openTip = { btn: tipBtn, pop: pop };
+        pop.removeAttribute("style");
+        openSheet(holder, {
+          onClose: function () {
+            pop.hidden = true;
+            document.body.appendChild(pop);
+            tipBtn.setAttribute("aria-expanded", "false");
+          }
+        });
+        return;
       }
+      tipBtn.setAttribute("aria-expanded", "true");
+      // Desktop: reparent to <body> + fixed positioning — escapes
+      // overflow:hidden / transformed ancestors (the connection card clips it
+      // otherwise) and clamps inside the viewport.
+      document.body.appendChild(pop);
+      pop.hidden = false;
+      var r = tipBtn.getBoundingClientRect();
+      var pw = Math.min(300, Math.round(window.innerWidth * 0.86) - 16);
+      pop.style.position = "fixed";
+      pop.style.width = pw + "px";
+      pop.style.left = Math.round(Math.min(Math.max(8, r.left), window.innerWidth - pw - 8)) + "px";
+      pop.style.top = "0px"; // place to measure height first
+      var ph = pop.offsetHeight;
+      var top = r.bottom + 6;
+      if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
+      pop.style.top = Math.round(top) + "px";
+      openTip = { btn: tipBtn, pop: pop };
     });
   });
   document.addEventListener("click", function (e) {
@@ -847,6 +988,34 @@
   });
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && openTip) { var b = openTip.btn; closeTip(); b.focus(); }
+  });
+  // A fixed-position popover doesn't follow its button — close on any scroll.
+  window.addEventListener("scroll", function () { if (openTip) closeTip(); }, { passive: true, capture: true });
+
+  // The posting-mode ⓘ is a hover tooltip on desktop — dead on a phone, so a
+  // tap opens the same explanation as a bottom sheet instead.
+  document.querySelectorAll(".mode-info").forEach(function (info) {
+    info.addEventListener("click", function (e) {
+      if (!isMobileViewport()) return;
+      e.stopPropagation();
+      var tip = info.querySelector(".mode-tip");
+      var holder = document.createElement("div");
+      holder.className = "tip-sheet";
+      var body = document.createElement("div");
+      body.className = "help-pop";
+      body.innerHTML = "<strong>Manual vs Auto</strong><span></span>";
+      body.querySelector("span").textContent = tip ? tip.textContent :
+        "Auto checks every few minutes and posts new clips for you.";
+      holder.appendChild(body);
+      var gotIt = document.createElement("button");
+      gotIt.type = "button";
+      gotIt.className = "btn btn-secondary btn-block";
+      gotIt.textContent = "Got it";
+      gotIt.style.marginTop = "16px";
+      holder.appendChild(gotIt);
+      var sheet = openSheet(holder);
+      if (sheet) gotIt.addEventListener("click", sheet.close);
+    });
   });
 
   // -------------------------------------------------- "Need help?" launcher
@@ -864,12 +1033,17 @@
         var focusables = helpPanel.querySelectorAll("button, a[href], summary");
         if (!focusables.length) return;
         var first = focusables[0], last = focusables[focusables.length - 1];
+        if (!helpPanel.contains(document.activeElement)) { e.preventDefault(); first.focus(); return; }
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       };
-      var setHelpOpen = function (open) {
+      var helpScrim = helpRoot.querySelector("[data-help-scrim]");
+      var setHelpOpen = function (open, restoreFocus) {
         helpPanel.hidden = !open;
         helpBtn.setAttribute("aria-expanded", String(open));
+        helpPanel.style.transform = "";
+        if (helpScrim) helpScrim.hidden = !open || !isMobileViewport();
+        document.body.classList.toggle("sheet-open", open && isMobileViewport());
         if (open) {
           helpLastFocus = document.activeElement;
           document.addEventListener("keydown", onHelpKey, true);
@@ -877,15 +1051,21 @@
           if (f) f.focus();
         } else {
           document.removeEventListener("keydown", onHelpKey, true);
-          if (helpLastFocus && helpLastFocus.focus) helpLastFocus.focus();
-          else helpBtn.focus();
+          // Light-dismiss (outside click) must NOT yank focus away from
+          // whatever the user just clicked — only Esc/close restore it.
+          if (restoreFocus !== false) {
+            if (helpLastFocus && helpLastFocus.focus) helpLastFocus.focus();
+            else helpBtn.focus();
+          }
         }
       };
       helpBtn.addEventListener("click", function () { setHelpOpen(helpPanel.hidden); });
       var helpClose = helpPanel.querySelector("[data-help-close]");
       if (helpClose) helpClose.addEventListener("click", function () { setHelpOpen(false); });
+      if (helpScrim) helpScrim.addEventListener("click", function () { setHelpOpen(false, false); });
+      sheetSwipe(helpPanel, helpPanel.querySelector("[data-help-grip]"), function () { setHelpOpen(false, false); });
       document.addEventListener("click", function (e) {
-        if (!helpPanel.hidden && !helpRoot.contains(e.target)) setHelpOpen(false);
+        if (!helpPanel.hidden && !helpRoot.contains(e.target)) setHelpOpen(false, false);
       });
     }
   }
@@ -1574,7 +1754,7 @@
       var fields = { onlyCaption: "1", captionPreset: currentPreset(), hashtags: currentTags().join(" ") };
       if (currentPreset() === "custom" && captionInput) fields.captionTemplate = captionInput.value;
       postSettings(fields).then(function (json) {
-        if (json.ok) flashSaved("captions-saved");
+        if (json.ok) { flashSaved("captions-saved"); markSetupStep(3); }
         else toast(json.error || "Couldn't save your caption style — try again.", "error");
       }).catch(function () { toast("Couldn't save — check your connection.", "error"); });
     }, 500);
@@ -1585,7 +1765,9 @@
   document.querySelectorAll(".preset-card").forEach(function (card) {
     card.addEventListener("click", function () {
       var key = card.getAttribute("data-preset");
-      if (currentPreset() === key) return;
+      // Confirming the already-selected style is still a deliberate choice —
+      // save it (records the pick + "Saved ✓" feedback) instead of ignoring it.
+      if (currentPreset() === key) { autoSaveCaptions(); return; }
       captionsRoot.setAttribute("data-preset", key);
       document.querySelectorAll(".preset-card").forEach(function (c) {
         var on = c === card;
@@ -1608,7 +1790,7 @@
       postSettings({ onlyCaption: "1", captionPreset: "custom", hashtags: currentTags().join(" "), captionTemplate: captionInput.value })
         .then(function (json) {
           saveTemplateBtn.classList.remove("is-loading"); saveTemplateBtn.disabled = false;
-          if (json.ok) flashSaved("captions-saved");
+          if (json.ok) { flashSaved("captions-saved"); markSetupStep(3); }
           else toast(json.error || "Couldn't save — try again.", "error");
         })
         .catch(function () { saveTemplateBtn.classList.remove("is-loading"); saveTemplateBtn.disabled = false; toast("Couldn't save — check your connection.", "error"); });
@@ -1624,7 +1806,10 @@
       postSettings({ onlyUsername: "1", whatnotUsername: usernameInput.value })
         .then(function (json) {
           saveUsernameBtn.classList.remove("is-loading"); saveUsernameBtn.disabled = false;
-          if (json.ok) flashSaved("whatnot-saved");
+          if (json.ok) {
+            flashSaved("whatnot-saved");
+            if (usernameInput.value.trim()) markSetupStep(1);
+          }
           else toast(json.error || "That username doesn't look right.", "error");
         })
         .catch(function () { saveUsernameBtn.classList.remove("is-loading"); saveUsernameBtn.disabled = false; toast("Couldn't save — check your connection.", "error"); });

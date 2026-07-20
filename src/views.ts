@@ -218,6 +218,7 @@ export function layout(title: string, body: string): string {
 <div class="canvas-glow" aria-hidden="true"></div>
 ${body}
 <div class="toast-stack" id="toast-stack" role="status" aria-live="polite"></div>
+<div class="visually-hidden" id="sr-live" role="status" aria-live="polite"></div>
 <div id="modal-root"></div>
 </body>
 </html>`;
@@ -736,11 +737,11 @@ export function welcomePage(
     <form method="post" action="/welcome/username" class="wiz-form" id="wiz-username-form">
       <input type="hidden" name="csrf" value="${esc(csrf)}">
       <div class="field">
-        <label class="field-label" for="whatnotUsername">Whatnot username ${helpTip(
+        <span class="label-row"><label class="field-label" for="whatnotUsername">Whatnot username</label>${helpTip(
           "uname-wiz",
           "Where do I find this?",
           `It's your @ name on Whatnot — the bit after <strong>whatnot.com/user/…</strong> on your profile. The same name your buyers see.`,
-          "/guide#clipping")}</label>
+          "/guide#clipping")}</span>
         <div class="input-affix input-affix-lead">
           <span class="input-lead" aria-hidden="true">@</span>
           <input class="input input-lg" type="text" id="whatnotUsername" name="whatnotUsername"
@@ -851,14 +852,16 @@ function helpLauncher(setup?: HelpSetupState | null): string {
             aria-expanded="false" aria-controls="help-panel" hidden>
       ${icon("help-circle")}<span class="help-launcher-text">Need help?</span>
     </button>
-    <div class="help-panel card" id="help-panel" role="dialog" aria-modal="true" aria-labelledby="help-panel-title" hidden>
+    <div class="help-scrim" data-help-scrim hidden></div>
+    <div class="help-panel card" id="help-panel" role="dialog" aria-labelledby="help-panel-title" hidden>
+      <span class="sheet-grip help-grip" data-help-grip aria-hidden="true"></span>
       <div class="help-head">
         <h2 class="help-title display" id="help-panel-title">Need a hand?</h2>
         <button type="button" class="btn-icon" data-help-close aria-label="Close help">${icon("x")}</button>
       </div>
       ${setupBlock}
       <nav class="help-links" aria-label="Help topics">
-        ${setup ? "" : `<a href="/dashboard#get-started">${icon("bolt")}<span>Your dashboard &amp; setup</span></a>`}
+        ${setup ? "" : `<a href="/dashboard">${icon("bolt")}<span>Your dashboard &amp; setup</span></a>`}
         <a href="/guide#clipping">${icon("clip")}<span>How clipping works</span></a>
         <a href="/guide#instagram">${icon("instagram")}<span>Instagram requirements</span></a>
         <a href="/guide#captions">${icon("sparkles")}<span>Caption styles</span></a>
@@ -874,18 +877,70 @@ function helpLauncher(setup?: HelpSetupState | null): string {
   </div>`;
 }
 
+/**
+ * ONE nav model drives every navigation surface — the mobile bottom tab bar,
+ * the mobile Menu sheet, and the desktop sidebar — so they can never drift.
+ * `primary` = the four thumb tabs; `menu` = everything that lives behind the
+ * Menu tab on a phone (and appears inline in the desktop sidebar).
+ */
+function navModel(acct: Account) {
+  const primary: Array<{ key: NavKey; href: string; icon: string; label: string }> = [
+    { key: "overview", href: "/dashboard", icon: "bolt", label: "Home" },
+    { key: "history", href: "/history", icon: "activity", label: "Clips" },
+    { key: "thumbnails", href: "/thumbnails", icon: "wand", label: "Covers" },
+    { key: "guide", href: "/guide", icon: "book", label: "Guide" },
+  ];
+  const menu: Array<{ key: NavKey | "settings"; href: string; icon: string; label: string }> = [
+    { key: "billing", href: "/billing", icon: "check-circle", label: "Billing" },
+    { key: "settings", href: "/dashboard#settings", icon: "settings", label: "Settings" },
+    { key: "status", href: "/status", icon: "radio", label: "System status" },
+    ...(acct.isAdmin ? [{ key: "admin" as NavKey, href: "/admin", icon: "lock", label: "Admin" }] : []),
+  ];
+  return { primary, menu };
+}
+
 function appShell(acct: Account, active: NavKey, content: string, flash?: unknown, help?: HelpSetupState | null): string {
-  const navLink = (key: NavKey | "clips" | "settings", href: string, ic: string, text: string) => `
+  const nav = navModel(acct);
+  const navLink = (key: string, href: string, ic: string, text: string) => `
     <a class="side-link${key === active ? " is-active" : ""}" href="${href}"${key === active ? ' aria-current="page"' : ""}>${icon(ic)}<span>${text}</span></a>`;
 
-  const navLinks = `
-    ${navLink("overview", "/dashboard", "bolt", "Overview")}
-    ${navLink("history", "/history", "activity", "History")}
-    ${navLink("thumbnails", "/thumbnails", "wand", "Show Covers")}
-    ${navLink("billing", "/billing", "check-circle", "Billing")}
-    ${navLink("guide", "/guide", "book", "Guide")}
-    ${navLink("settings", "/dashboard#settings", "settings", "Settings")}
-    ${acct.isAdmin ? navLink("admin", "/admin", "lock", "Admin") : ""}`;
+  const navLinks = [...nav.primary, ...nav.menu]
+    .map((n) => navLink(n.key, n.href, n.icon, n.label)).join("");
+
+  // ---- mobile bottom tab bar (<960px) — the native-app pattern -------------
+  const menuActive = nav.menu.some((n) => n.key === active);
+  const tabLink = (n: { key: string; href: string; icon: string; label: string }) => `
+      <a class="tab-link${n.key === active ? " is-active" : ""}" href="${n.href}"${n.key === active ? ' aria-current="page"' : ""}>${icon(n.icon)}<span>${n.label}</span></a>`;
+  const tabBar = `
+    <nav class="tab-bar" aria-label="Primary">
+      ${nav.primary.map(tabLink).join("")}
+      <button type="button" class="tab-link${menuActive ? " is-active" : ""}" data-menu-open
+              aria-expanded="false" aria-controls="menu-sheet" aria-haspopup="dialog">${icon("menu")}<span>Menu</span></button>
+    </nav>`;
+
+  // ---- the Menu bottom sheet (account + secondary nav) ---------------------
+  const menuSheet = `
+    <div class="menu-scrim" data-menu-scrim hidden></div>
+    <div class="menu-sheet" id="menu-sheet" role="dialog" aria-labelledby="menu-sheet-title" hidden>
+      <span class="sheet-grip" data-sheet-grip aria-hidden="true"></span>
+      <h2 class="visually-hidden" id="menu-sheet-title">Menu</h2>
+      <div class="menu-id">
+        <span class="avatar avatar-lg" aria-hidden="true">${esc(initials(acct.email))}</span>
+        <div class="menu-id-text">
+          <strong>${esc(acct.email)}</strong>
+          <small>Member since ${esc(new Date(acct.createdAt).toLocaleDateString(undefined, { month: "short", year: "numeric" }))}</small>
+        </div>
+        ${acct.enabled
+          ? `<span class="engine-ind is-on"><span class="pulse-dot"></span>Active</span>`
+          : `<span class="engine-ind"><span class="idle-dot"></span>Paused</span>`}
+      </div>
+      <nav class="menu-links" aria-label="More">
+        ${nav.menu.map((n) => `
+        <a class="menu-link${n.key === active ? " is-active" : ""}" href="${n.href}"${n.key === active ? ' aria-current="page"' : ""}>${icon(n.icon)}<span>${esc(n.label)}</span>${icon("chevron-right", "menu-link-caret")}</a>`).join("")}
+        <a class="menu-link" href="/welcome?step=1">${icon("help-circle")}<span>Setup guide</span>${icon("chevron-right", "menu-link-caret")}</a>
+        <a class="menu-link menu-link-out" href="/logout">${icon("log-out")}<span>Log out</span></a>
+      </nav>
+    </div>`;
 
   const engineDot = acct.enabled
     ? `<span class="engine-ind is-on"><span class="pulse-dot"></span>Engine active</span>`
@@ -922,21 +977,19 @@ function appShell(acct: Account, active: NavKey, content: string, flash?: unknow
 
   <div class="shell-main">
     <header class="topbar">
-      <button type="button" class="btn-icon topbar-menu" data-mobile-nav aria-label="Open menu"
-              aria-expanded="false" aria-controls="mobile-nav" hidden>${icon("menu")}</button>
       <a class="topbar-brand" href="/dashboard" aria-label="ClipFlow dashboard">${wordmark(24)}</a>
       <div class="topbar-right">
         ${engineDot}
-        ${accountMenu}
       </div>
     </header>
-    <nav class="mobile-nav" id="mobile-nav" aria-label="Sections" hidden>${navLinks}</nav>
 
     <main id="main" class="content" data-stagger>
       ${content}
     </main>
   </div>
 </div>
+${tabBar}
+${menuSheet}
 ${helpLauncher(help)}
 ${flash !== undefined ? jsonIsland("cf-flash", flash) : ""}`;
 }
@@ -1112,11 +1165,11 @@ export function dashboard(
   const whatnotCard = `
   <div class="card settings-card${uname ? "" : " settings-card-empty"}" data-csrf="${esc(csrf)}" id="whatnot-card">
     <div class="field">
-      <label class="field-label" for="whatnotUsername">Whatnot username${uname ? "" : ` <span class="start-here">Start here</span>`} ${helpTip(
+      <span class="label-row"><label class="field-label" for="whatnotUsername">Whatnot username${uname ? "" : ` <span class="start-here">Start here</span>`}</label>${helpTip(
         "uname",
         "Where do I find this?",
         `It's your @ name on Whatnot — the bit after <strong>whatnot.com/user/…</strong> on your profile. The same name your buyers see.`,
-        "/guide#clipping")}</label>
+        "/guide#clipping")}</span>
       <div class="whatnot-row">
         <div class="input-affix input-affix-lead">
           <span class="input-lead" aria-hidden="true">@</span>
@@ -1318,14 +1371,16 @@ export function dashboard(
       ${done ? `<span class="setup-done-tag">${icon("check-circle")}Done</span>` : cta}
     </li>`;
   const setupHeadline = doneCount === 0
-    ? "Let's get your clips posting themselves"
+    ? (mode === "auto" ? "Let's get your clips posting themselves" : "Let's get your clips posting everywhere")
     : doneCount === 3 ? "One step to go" : `Nice — ${doneCount} of 4 done`;
   const checklistCard = `
     <section class="setup-card card" aria-labelledby="setup-title" id="get-started">
       <div class="setup-head">
         <p class="eyebrow">Get set up</p>
         <h2 class="display setup-title" id="setup-title">${setupHeadline}</h2>
-        <p class="setup-sub">Four quick steps, then every clip you publish posts itself.</p>
+        <p class="setup-sub">Four quick steps, then ${mode === "auto"
+          ? "every clip you publish posts itself."
+          : "posting every clip is one tap after your show."}</p>
         <div class="setup-progress-row">
           <div class="setup-progress" role="progressbar" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${doneCount}"
                aria-label="Setup progress: ${doneCount} of 4 done"><span data-setup-fill style="width:${(doneCount / 4) * 100}%"></span></div>
@@ -1348,7 +1403,9 @@ export function dashboard(
       <span class="setup-done-icon" aria-hidden="true">${icon("check-circle")}</span>
       <div class="setup-done-text">
         <h2 class="display">You're all set 🎉</h2>
-        <p>ClipFlow is watching <strong class="mono">@${esc(uname)}</strong>. Publish a clip on your next show and it posts itself — that's the whole job.</p>
+        <p>ClipFlow is watching <strong class="mono">@${esc(uname)}</strong>. ${mode === "auto"
+          ? "Publish a clip on your next show and it posts itself — that's the whole job."
+          : "After each show, publish your clip and tap <strong>Check for clips</strong> — we do the rest. Want it fully hands-off? Switch to <strong>Auto</strong>."}</p>
       </div>
       <button type="button" class="btn-icon setup-done-close" data-setup-dismiss aria-label="Dismiss">${icon("x")}</button>
     </section>`;
@@ -1361,7 +1418,9 @@ export function dashboard(
       <span class="celebrate-emoji" aria-hidden="true">🎉</span>
       <div class="celebrate-text">
         <strong>Your first clip is live!</strong>
-        <span>It's posted and out in the world. Every clip you publish from now on takes the same trip — automatically.</span>
+        <span>It's posted and out in the world. ${mode === "auto"
+          ? "Every clip you publish from now on takes the same trip — automatically."
+          : "Publish a clip after each show, tap Check, and every one takes the same trip. Flip on Auto to skip even that."}</span>
       </div>
     </div>` : "";
 
@@ -1452,11 +1511,11 @@ export function dashboard(
 
       <section class="section-block" id="captions">
         <div class="section-head">
-          <h2 class="display section-h">Your captions ${helpTip(
+          <span class="section-h-row"><h2 class="display section-h">Your captions</h2>${helpTip(
             "captions",
             "What's this for?",
             `This is what gets written under every post — pick a voice once and every clip uses it. You can change it any time.`,
-            "/guide#captions")}</h2>
+            "/guide#captions")}</span>
           <span class="saved-flash" id="captions-saved" hidden>Saved ✓</span>
         </div>
         ${captionsCard}
@@ -1505,6 +1564,7 @@ export function dashboard(
             <div class="field">
               <label class="field-label" for="delete-confirm">Type your email to confirm</label>
               <input class="input" type="text" id="delete-confirm" name="confirm" autocomplete="off"
+                     inputmode="email" autocapitalize="off" spellcheck="false"
                      placeholder="${esc(acct.email)}" data-expected-email="${esc(acct.email)}">
             </div>
             <button class="btn btn-danger" type="submit"
@@ -1526,9 +1586,9 @@ export function dashboard(
               <div class="demo-clip" aria-hidden="true">
                 <img src="/demo/clip-squish.webp" alt="">
                 <span class="pill pill-live"><span class="pulse-dot"></span>Clip</span>
-                <span class="demo-clip-title">${esc(sampleTitle)}</span>
+                <span class="demo-clip-title"><span class="demo-clip-title-text">${esc(sampleTitle)}</span></span>
               </div>
-              <figcaption>1 · You publish a clip on <strong class="mono">@${esc(uname || "your Whatnot")}</strong></figcaption>
+              <figcaption>1 · You publish a clip ${uname ? `on <strong class="mono">@${esc(uname)}</strong>` : "on Whatnot"}</figcaption>
             </figure>
             <div class="demo-arrow" aria-hidden="true">${icon("arrow-right")}</div>
             <figure class="demo-stage">
@@ -1541,13 +1601,17 @@ export function dashboard(
             <div class="demo-arrow" aria-hidden="true">${icon("arrow-right")}</div>
             <figure class="demo-stage">
               <div class="demo-posted" aria-hidden="true">
-                <span class="pill pill-posted">${icon("instagram")}Posted to Instagram ${icon("check")}</span>
-                <span class="pill pill-posted">${icon("tiktok")}Posted to TikTok ${icon("check")}</span>
+                ${acct.instagram
+                  ? `<span class="pill pill-posted">${icon("instagram")}Posted to Instagram ${icon("check")}</span>`
+                  : `<span class="pill pill-pending">${icon("instagram")}Instagram — once you connect</span>`}
+                ${acct.tiktok
+                  ? `<span class="pill pill-posted">${icon("tiktok")}Posted to TikTok ${icon("check")}</span>`
+                  : `<span class="pill pill-pending">${icon("tiktok")}TikTok — once you connect</span>`}
               </div>
-              <figcaption>3 · …and posts it while you keep selling</figcaption>
+              <figcaption>3 · …and posts it ${connectedCount > 0 ? "while you keep selling" : "as soon as you've connected"}</figcaption>
             </figure>
           </div>
-          <p class="demo-note">${icon("check-circle")} This is a sample built from your settings. Publish a real clip and this exact flow runs for real.</p>
+          <p class="demo-note">${icon("check-circle")} This is a sample built from your settings. Publish a real clip and this flow runs for real on the accounts you've connected.</p>
         </div>
       </template>
 
@@ -1899,8 +1963,8 @@ export function statusPage(acct: Account, info: StatusInfo): string {
           ${row("Checks since boot", String(e.passCount))}
           ${row("Instagram", acct.instagram ? (acct.instagram.username ? `connected as @${esc(acct.instagram.username)}` : "connected") : "not connected", Boolean(acct.instagram))}
           ${row("TikTok", acct.tiktok ? (acct.tiktok.username ? `connected as @${esc(acct.tiktok.username)}` : "connected") : "not connected", Boolean(acct.tiktok))}
-          ${row("Posting service (Zernio)", info.zernioConfigured ? "configured" : "no API key", info.zernioConfigured)}
-          ${row("AI show covers (Gemini)", info.geminiConfigured ? "configured" : "no API key — studio locked", info.geminiConfigured)}
+          ${row("Posting service", info.zernioConfigured ? "ready" : "not switched on yet", info.zernioConfigured)}
+          ${row("AI show covers", info.geminiConfigured ? "ready" : "not switched on yet — studio locked", info.geminiConfigured)}
           ${row("Version", esc(info.version))}
         </dl>
       </section>`;

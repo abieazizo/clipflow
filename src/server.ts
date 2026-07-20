@@ -650,7 +650,9 @@ app.post("/check", async (req, res) => {
   }
   res.json({
     found: 0, queued: r.queued, alreadyPosted: r.alreadyPosted, code: "none",
-    message: "No new clips yet — publish one on your next show and check again.",
+    message: acct.postingMode === "auto"
+      ? "No new clips yet — publish one on your next show and it posts on its own within a few minutes."
+      : "No new clips yet — publish one on your next show and check again.",
   });
 });
 

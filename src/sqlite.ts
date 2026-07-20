@@ -108,12 +108,6 @@ function migrate(d: Database.Database): void {
   // silently stops on upgrade.
   ensureColumn(d, "accounts", "postingMode", "TEXT NOT NULL DEFAULT 'auto'");
   ensureColumn(d, "accounts", "lastCheckedAt", "TEXT NULL");
-  // Guided-setup milestones. captionTouchedAt = the seller has actively chosen
-  // (or saved) a caption style; setupSeenAt = the "You're all set" collapse has
-  // been shown once; firstPostCelebratedAt = the one-time first-post moment fired.
-  ensureColumn(d, "accounts", "captionTouchedAt", "TEXT NULL");
-  ensureColumn(d, "accounts", "setupSeenAt", "TEXT NULL");
-  ensureColumn(d, "accounts", "firstPostCelebratedAt", "TEXT NULL");
 
   // Caption presets: the ONE-TIME backfill (runs only when the column is first
   // added) marks accounts whose template differs from the stock default as
@@ -123,6 +117,33 @@ function migrate(d: Database.Database): void {
     d.prepare(
       "UPDATE accounts SET captionPreset = 'custom' WHERE captionTemplate != ? AND captionTemplate != ''"
     ).run(DEFAULT_CAPTION_TEMPLATE);
+  }
+
+  // Guided-setup milestones. captionTouchedAt = the seller has actively chosen
+  // (or saved) a caption style; setupSeenAt = the "You're all set" collapse has
+  // been shown once; firstPostCelebratedAt = the one-time first-post moment
+  // fired. Each gets a one-time backfill so veteran accounts don't regress
+  // into the new-user checklist or get a false "first clip!" celebration:
+  // customized captions or any post history counts as having chosen captions;
+  // any post history means setup was completed long ago; any POSTED clip means
+  // the first-post moment already happened (quietly, before it existed).
+  if (ensureColumn(d, "accounts", "captionTouchedAt", "TEXT NULL")) {
+    d.prepare(`
+      UPDATE accounts SET captionTouchedAt = createdAt
+      WHERE captionPreset = 'custom' OR id IN (SELECT DISTINCT accountId FROM posts)
+    `).run();
+  }
+  if (ensureColumn(d, "accounts", "setupSeenAt", "TEXT NULL")) {
+    d.prepare(`
+      UPDATE accounts SET setupSeenAt = createdAt
+      WHERE id IN (SELECT DISTINCT accountId FROM posts)
+    `).run();
+  }
+  if (ensureColumn(d, "accounts", "firstPostCelebratedAt", "TEXT NULL")) {
+    d.prepare(`
+      UPDATE accounts SET firstPostCelebratedAt = createdAt
+      WHERE id IN (SELECT DISTINCT accountId FROM posts WHERE status = 'posted')
+    `).run();
   }
 }
 
