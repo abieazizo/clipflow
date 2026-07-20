@@ -1176,6 +1176,34 @@ export function dashboard(
     </div>`
     : "";
 
+  // ---- guided setup checklist (new users) -----------------------------------
+  // The single clearest thing a first-timer needs: what to do next. Shows the
+  // three setup steps with live progress and one tap each; vanishes once done.
+  const hasUname = Boolean(uname);
+  const hasConn = connectedCount > 0;
+  const hasActivity = Boolean(extras.lastCheckedAt) || total > 0;
+  const doneCount = [hasUname, hasConn, hasActivity].filter(Boolean).length;
+  const setupStep = (done: boolean, n: string, title: string, desc: string, ctaHref: string, ctaLabel: string) => `
+    <li class="setup-step${done ? " is-done" : ""}">
+      <span class="setup-num" aria-hidden="true">${done ? icon("check") : n}</span>
+      <div class="setup-text"><strong>${title}</strong><span>${desc}</span></div>
+      ${done ? `<span class="setup-done-tag">Done</span>` : `<a class="btn btn-sm btn-primary setup-cta" href="${ctaHref}">${ctaLabel}</a>`}
+    </li>`;
+  const setupChecklist = doneCount === 3 ? "" : `
+    <section class="setup-card card" aria-label="Get set up" id="get-started">
+      <div class="setup-head">
+        <p class="eyebrow">Get set up</p>
+        <h2 class="display setup-title">${doneCount === 0 ? "Let's get your clips posting" : `Nearly there — ${doneCount} of 3 done`}</h2>
+        <p class="setup-sub">Three quick steps, then ClipFlow posts your Whatnot clips for you.</p>
+        <div class="setup-progress" aria-hidden="true"><span style="width:${(doneCount / 3) * 100}%"></span></div>
+      </div>
+      <ol class="setup-steps">
+        ${setupStep(hasUname, "1", "Add your Whatnot username", "So we know whose clips to watch.", "#settings", "Add it")}
+        ${setupStep(hasConn, "2", "Connect Instagram or TikTok", "Where your clips get posted.", "#connections", "Connect")}
+        ${setupStep(hasActivity, "3", "Publish a clip, then tap Check", "On your next show, hit Clip — then Check for clips here.", "#clips", "Show me")}
+      </ol>
+    </section>`;
+
   const content = `
       ${upgradeBanner}${verifyBanner}
       <section class="page-head" id="overview">
@@ -1196,9 +1224,11 @@ export function dashboard(
         </div>
       </section>
 
+      ${setupChecklist}
+
       ${uname ? "" : whatnotSection}
 
-      <section class="conn-grid" aria-label="Platform connections">
+      <section class="conn-grid" id="connections" aria-label="Platform connections">
         ${connectionCard({ platform: "instagram", configured: status.metaConfigured, conn: acct.instagram, csrf })}
         ${connectionCard({ platform: "tiktok", configured: status.tiktokConfigured, conn: acct.tiktok, csrf })}
       </section>

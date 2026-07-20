@@ -1342,6 +1342,45 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 .watch-line-nudge .icon { width: 16px; height: 16px; color: var(--warning); flex: none; }
 
 /* connection cards */
+/* ---- guided setup checklist (new users) ---------------------------------- */
+.setup-card {
+  border: 1px solid var(--accent);
+  box-shadow: var(--elev-2), 0 0 0 1px rgba(255,90,60,.22);
+  background: linear-gradient(162deg, rgba(255,90,60,.07), var(--bg-1) 58%);
+  padding: var(--sp-8);
+  display: flex; flex-direction: column; gap: var(--sp-6);
+}
+.setup-head { display: flex; flex-direction: column; gap: var(--sp-1); }
+.setup-title { font-size: var(--fs-6); margin-top: var(--sp-1); }
+.setup-sub { color: var(--text-muted); font-size: var(--fs-2); }
+.setup-progress { height: 6px; background: var(--bg-3); border-radius: var(--r-full); overflow: hidden; margin-top: var(--sp-4); }
+.setup-progress span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: var(--r-full); transition: width var(--dur-3) var(--ease); }
+.setup-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.setup-step {
+  display: flex; align-items: center; gap: var(--sp-4);
+  padding: var(--sp-5); border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--bg-2);
+}
+.setup-step.is-done { opacity: .62; }
+.setup-num {
+  flex: none; width: 34px; height: 34px; border-radius: var(--r-full);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-3); color: var(--text-muted); font-weight: 700; font-size: var(--fs-3);
+  border: 1px solid var(--border-strong);
+}
+.setup-step.is-done .setup-num { background: var(--success); color: #06130a; border-color: transparent; }
+.setup-num .icon { width: 18px; height: 18px; }
+.setup-text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.setup-text strong { font-size: var(--fs-3); }
+.setup-text span { color: var(--text-muted); font-size: var(--fs-2); }
+.setup-cta { flex: none; }
+.setup-done-tag { flex: none; color: var(--success); font-weight: 600; font-size: var(--fs-2); }
+@media (max-width: 560px) {
+  .setup-step { flex-wrap: wrap; }
+  .setup-text { flex-basis: calc(100% - 34px - var(--sp-4)); }
+  .setup-cta { flex-basis: 100%; width: 100%; margin-top: var(--sp-3); justify-content: center; }
+}
+
 .conn-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
