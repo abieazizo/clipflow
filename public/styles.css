@@ -130,6 +130,25 @@
   --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--cool);
 }
 
+/* Phone-responsive design tokens. The type + spacing scales are built for
+   desktop; on a phone the big display sizes and the 64–96px section rhythm
+   feel oversized and spread-out. Shrinking the tokens here re-scales every
+   heading and every section margin across the whole app at once. */
+@media (max-width: 600px) {
+  :root {
+    --fs-5: 1.25rem;    /* 22 → 20 */
+    --fs-6: 1.4rem;     /* 28 → 22 */
+    --fs-7: 1.7rem;     /* 36 → 27 */
+    --fs-8: 2.1rem;     /* 48 → 34 */
+    --fs-9: 2.4rem;     /* 60 → 38 */
+    --sp-9: 28px;       /* 40 */
+    --sp-10: 32px;      /* 48 */
+    --sp-11: 44px;      /* 64 → section rhythm */
+    --sp-12: 52px;      /* 80 */
+    --sp-13: 60px;      /* 96 */
+  }
+}
+
 /* --------------------------------------------------------------------------
    base
    -------------------------------------------------------------------------- */

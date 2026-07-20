@@ -10,9 +10,17 @@
  *   dashboard · thumbnails · guide · status · legal · error pages
  */
 
+import { statSync } from "node:fs";
 import type { Account, PostRow } from "./db.js";
 import type { ClipRow } from "./engine.js";
 import type { ThumbRecord } from "./thumbstore.js";
+
+/** Cache-buster for /styles.css — the file's mtime, read once at boot. A new
+ *  deploy changes the hash, so browsers (esp. iPhone Safari, which caches CSS
+ *  hard) fetch the fresh stylesheet instead of serving a stale one. */
+const ASSET_VER = (() => {
+  try { return statSync("public/styles.css").mtimeMs.toString(36); } catch { return "1"; }
+})();
 import { STYLE_SPECS, deriveSubject, type ThumbStyle, type StyleSpec } from "./gemini.js";
 import { CAPTION_PRESETS, effectiveTemplate, renderTemplate } from "./caption.js";
 
@@ -184,7 +192,7 @@ export function layout(title: string, body: string): string {
 <!-- Self-hosted brand fonts (woff2); preload the two most-used weights. -->
 <link rel="preload" href="/fonts/Satoshi-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ClashDisplay-Semibold.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/styles.css?v=${ASSET_VER}">
 <script src="/app.js" defer></script>
 </head>
 <body>
