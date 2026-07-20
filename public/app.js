@@ -513,12 +513,6 @@
     pill.className = "pill " + (mode === "auto" ? "pill-live" : "pill-neutral");
     pill.innerHTML = mode === "auto" ? '<span class="pulse-dot"></span>Auto-posting' : "Manual mode";
   }
-  function showCheckResult(msg) {
-    var el = document.querySelector("[data-check-result]");
-    if (!el) return;
-    el.textContent = msg; el.hidden = !msg;
-  }
-
   // "Check for clips" — the new user's first real interaction. While it runs,
   // staged status lines make the work visible; the result names the exact next
   // step for every outcome (found / none yet / something missing).
@@ -666,6 +660,234 @@
         modeDebounce = window.setTimeout(function () { modeDebounce = null; persistMode(mode); }, 350);
       });
     });
+  }
+
+  // ------------------------------------------------- shared sheet (modal) UI
+  //
+  // A generic focus-trapped dialog for server-rendered <template> content
+  // (the sample-post demo and the how-to-clip steps). Escape, backdrop click,
+  // and any [data-*-close] button all close it; focus returns where it was.
+
+  function openSheet(node) {
+    if (!modalRoot) return null;
+    var previous = document.activeElement;
+    var backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop sheet-backdrop";
+    backdrop.appendChild(node);
+    function close() {
+      document.removeEventListener("keydown", onKey, true);
+      backdrop.remove();
+      if (previous && previous.focus) previous.focus();
+    }
+    function onKey(e) {
+      if (e.key === "Escape") { e.preventDefault(); close(); return; }
+      if (e.key !== "Tab") return;
+      var focusables = backdrop.querySelectorAll("button, a[href], input, summary");
+      if (!focusables.length) return;
+      var first = focusables[0], last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    backdrop.addEventListener("click", function (e) { if (e.target === backdrop) close(); });
+    document.addEventListener("keydown", onKey, true);
+    modalRoot.appendChild(backdrop);
+    var focusTarget = backdrop.querySelector("button, a[href]");
+    if (focusTarget) focusTarget.focus();
+    return { close: close, root: backdrop };
+  }
+
+  function postMilestone(kind, csrf) {
+    if (!csrf) return;
+    fetch("/milestone", {
+      method: "POST", headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ csrf: csrf, kind: kind })
+    }).catch(function () { /* purely cosmetic state — never bother the user */ });
+  }
+
+  // -------------------------------------------------- guided-setup checklist
+
+  // Progress bar fills in from zero on load — the "you're getting somewhere"
+  // moment. Skipped under reduced motion (the width is already correct).
+  var setupFill = document.querySelector("[data-setup-fill]");
+  if (setupFill && !reducedMotion()) {
+    var fillTarget = setupFill.style.width;
+    setupFill.style.width = "0%";
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(function () { setupFill.style.width = fillTarget; });
+    });
+  }
+
+  // Checklist CTAs that jump to a section AND land focus in the right field.
+  document.querySelectorAll("[data-setup-goto]").forEach(function (a) {
+    a.addEventListener("click", function () {
+      var id = a.getAttribute("data-setup-goto");
+      window.setTimeout(function () {
+        var el = document.getElementById(id);
+        if (el && el.focus) el.focus({ preventScroll: true });
+      }, 420);
+    });
+  });
+
+  // All four steps done → the one-time "You're all set" confirmation. Seeing
+  // it marks it seen server-side, so it never comes back.
+  var setupDoneCard = document.querySelector("[data-setup-complete]");
+  if (setupDoneCard) {
+    postMilestone("setup-seen", setupDoneCard.getAttribute("data-csrf") || "");
+    var dismissBtn = setupDoneCard.querySelector("[data-setup-dismiss]");
+    if (dismissBtn) dismissBtn.addEventListener("click", function () {
+      if (reducedMotion()) { setupDoneCard.remove(); return; }
+      setupDoneCard.classList.add("is-leaving-card");
+      window.setTimeout(function () { setupDoneCard.remove(); }, 280);
+    });
+  }
+
+  // "Show me how" — the how-to-clip steps in a sheet, ending at the Check button.
+  var howtoTpl = document.getElementById("howto-clip-template");
+  if (howtoTpl) {
+    document.querySelectorAll("[data-howto-clip]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var node = howtoTpl.content.firstElementChild.cloneNode(true);
+        var sheet = openSheet(node);
+        if (!sheet) return;
+        node.querySelectorAll("[data-howto-close]").forEach(function (x) { x.addEventListener("click", sheet.close); });
+        var doneBtn = node.querySelector("[data-howto-done]");
+        if (doneBtn) doneBtn.addEventListener("click", function () {
+          sheet.close();
+          var check = document.querySelector("[data-check]");
+          if (check) {
+            check.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
+            check.classList.add("is-spotlit");
+            window.setTimeout(function () { check.classList.remove("is-spotlit"); }, 2400);
+          } else {
+            scrollFocus("#clips");
+          }
+        });
+      });
+    });
+  }
+
+  // --------------------------------------------------- sample-post demo sheet
+  //
+  // "Preview a sample post" — the whole pipeline, populated with the seller's
+  // own handle/caption/hashtags, server-rendered into a <template>. Purely
+  // local: cloning the template makes zero network requests and posts nothing.
+
+  var demoTpl = document.getElementById("demo-post-template");
+  if (demoTpl) {
+    document.querySelectorAll("[data-demo-open]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var node = demoTpl.content.firstElementChild.cloneNode(true);
+        var sheet = openSheet(node);
+        if (!sheet) return;
+        node.querySelectorAll("[data-demo-close]").forEach(function (x) { x.addEventListener("click", sheet.close); });
+        var stages = node.querySelectorAll(".demo-stage, .demo-arrow");
+        if (reducedMotion()) {
+          stages.forEach(function (s) { s.classList.add("is-on"); });
+        } else {
+          stages.forEach(function (s, i) {
+            window.setTimeout(function () { s.classList.add("is-on"); }, 260 + i * 340);
+          });
+        }
+      });
+    });
+  }
+
+  // -------------------------------------------- first-post celebration (once)
+
+  var celebrateEl = document.querySelector("[data-celebrate]");
+  if (celebrateEl) {
+    postMilestone("first-post", celebrateEl.getAttribute("data-csrf") || "");
+    if (!reducedMotion()) {
+      var burst = document.createElement("div");
+      burst.className = "confetti";
+      burst.setAttribute("aria-hidden", "true");
+      var colors = ["#FF5A3C", "#FF8A4C", "#6E8BFF", "#22C55E", "#FFC01E"];
+      for (var ci = 0; ci < 28; ci++) {
+        var bit = document.createElement("span");
+        bit.className = "confetti-bit";
+        bit.style.left = (4 + Math.random() * 92) + "%";
+        bit.style.background = colors[ci % colors.length];
+        bit.style.animationDelay = (Math.random() * 0.5) + "s";
+        bit.style.animationDuration = (1.7 + Math.random() * 1.1) + "s";
+        bit.style.width = (6 + Math.random() * 5) + "px";
+        bit.style.height = (9 + Math.random() * 6) + "px";
+        burst.appendChild(bit);
+      }
+      document.body.appendChild(burst);
+      window.setTimeout(function () { burst.remove(); }, 3600);
+    }
+  }
+
+  // ------------------------------------------------------ inline help popovers
+
+  var openTip = null;
+  function closeTip() {
+    if (!openTip) return;
+    openTip.btn.setAttribute("aria-expanded", "false");
+    openTip.pop.hidden = true;
+    openTip = null;
+  }
+  document.querySelectorAll("[data-help-tip]").forEach(function (wrap) {
+    var tipBtn = wrap.querySelector(".help-tip-btn");
+    var pop = wrap.querySelector(".help-pop");
+    if (!tipBtn || !pop) return;
+    tipBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var wasOpen = openTip && openTip.btn === tipBtn;
+      closeTip();
+      if (!wasOpen) {
+        tipBtn.setAttribute("aria-expanded", "true");
+        pop.hidden = false;
+        openTip = { btn: tipBtn, pop: pop };
+      }
+    });
+  });
+  document.addEventListener("click", function (e) {
+    if (openTip && !openTip.pop.contains(e.target)) closeTip();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && openTip) { var b = openTip.btn; closeTip(); b.focus(); }
+  });
+
+  // -------------------------------------------------- "Need help?" launcher
+
+  var helpRoot = document.querySelector("[data-help-root]");
+  if (helpRoot) {
+    var helpBtn = helpRoot.querySelector("[data-help-toggle]");
+    var helpPanel = document.getElementById("help-panel");
+    if (helpBtn && helpPanel) {
+      helpBtn.hidden = false;
+      var helpLastFocus = null;
+      var onHelpKey = function (e) {
+        if (e.key === "Escape") { e.preventDefault(); setHelpOpen(false); return; }
+        if (e.key !== "Tab") return;
+        var focusables = helpPanel.querySelectorAll("button, a[href], summary");
+        if (!focusables.length) return;
+        var first = focusables[0], last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      };
+      var setHelpOpen = function (open) {
+        helpPanel.hidden = !open;
+        helpBtn.setAttribute("aria-expanded", String(open));
+        if (open) {
+          helpLastFocus = document.activeElement;
+          document.addEventListener("keydown", onHelpKey, true);
+          var f = helpPanel.querySelector("[data-help-close]");
+          if (f) f.focus();
+        } else {
+          document.removeEventListener("keydown", onHelpKey, true);
+          if (helpLastFocus && helpLastFocus.focus) helpLastFocus.focus();
+          else helpBtn.focus();
+        }
+      };
+      helpBtn.addEventListener("click", function () { setHelpOpen(helpPanel.hidden); });
+      var helpClose = helpPanel.querySelector("[data-help-close]");
+      if (helpClose) helpClose.addEventListener("click", function () { setHelpOpen(false); });
+      document.addEventListener("click", function (e) {
+        if (!helpPanel.hidden && !helpRoot.contains(e.target)) setHelpOpen(false);
+      });
+    }
   }
 
   // ----------------------------------------- clip thumbnails: fallback guard
