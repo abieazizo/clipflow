@@ -301,11 +301,15 @@ app.post("/signup", async (req, res) => {
   }
   const email = String(req.body.email ?? "").trim();
   const password = String(req.body.password ?? "");
+  const password2 = String(req.body.password2 ?? "");
   if (!EMAIL_RE.test(email) || email.length > 254) {
     return res.status(400).send(authPage("signup", "That doesn't look like an email address.", email));
   }
   if (password.length < 8 || password.length > 200) {
     return res.status(400).send(authPage("signup", "Password needs at least 8 characters.", email));
+  }
+  if (password !== password2) {
+    return res.status(400).send(authPage("signup", "Those passwords don't match — please retype them.", email));
   }
   const acct = await createAccount(email, password);
   if (!acct) {

@@ -279,6 +279,22 @@
     });
   });
 
+  // Live "repeat password" match check — shows a hint and blocks submit on mismatch.
+  document.querySelectorAll("[data-match]").forEach(function (input) {
+    var target = document.getElementById(input.getAttribute("data-match"));
+    var field = input.closest(".field");
+    var hint = field ? field.querySelector("[data-match-hint]") : null;
+    if (!target) return;
+    function check() {
+      var mismatch = input.value.length > 0 && input.value !== target.value;
+      if (hint) hint.hidden = !mismatch;
+      input.setAttribute("aria-invalid", String(mismatch));
+      input.setCustomValidity(mismatch ? "Passwords don't match" : "");
+    }
+    input.addEventListener("input", check);
+    target.addEventListener("input", check);
+  });
+
   // ---------------------------------------------------------------- copying
 
   document.querySelectorAll("[data-copy]").forEach(function (btn) {

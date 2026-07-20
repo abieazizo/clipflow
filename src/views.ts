@@ -563,6 +563,19 @@ export function authPage(mode: "login" | "signup", error?: string, email?: strin
           </button>
         </div>
       </div>
+      ${isSignup ? `
+      <div class="field">
+        <label class="field-label" for="password2">Repeat password</label>
+        <div class="input-affix">
+          <input class="input" type="password" id="password2" name="password2" required minlength="8"
+                 autocomplete="new-password" placeholder="Type it again" data-match="password">
+          <button type="button" class="input-affix-btn" data-toggle-password="password2"
+                  aria-label="Show password" aria-pressed="false" hidden>
+            ${icon("eye", "icon-eye")}${icon("eye-off", "icon-eye-off")}
+          </button>
+        </div>
+        <p class="field-hint field-match" data-match-hint hidden>Passwords don't match yet.</p>
+      </div>` : ""}
       <button class="btn btn-primary btn-lg btn-block" type="submit" data-loading-text="${isSignup ? "Creating account…" : "Logging in…"}">${cta}</button>
     </form>
     <p class="auth-switch">${switchLine}${isSignup ? "" : ` · <a href="/forgot">Forgot password?</a>`}</p>

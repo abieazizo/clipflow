@@ -441,6 +441,8 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 .field-label { font-size: var(--fs-2); font-weight: 700; color: var(--text); }
 .field-hint { font-size: var(--fs-1); color: var(--text-muted); }
 .field-hint code { color: var(--text-muted); }
+.field-match { color: var(--danger); margin-top: var(--sp-2); }
+.input[aria-invalid="true"] { border-color: var(--danger); }
 
 .input, .textarea {
   font: inherit;
