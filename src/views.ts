@@ -231,8 +231,8 @@ function heroVideo(): string {
     <div class="phone phone-hero">
       <span class="phone-notch"></span>
       <div class="phone-screen">
-        <video class="ph-video" autoplay muted loop playsinline preload="metadata"
-               poster="/demo/live-clip-poster.webp">
+        <video class="ph-video" muted loop playsinline preload="none"
+               data-hero-video poster="/demo/live-clip-poster.webp">
           <source src="/demo/live-clip.mp4" type="video/mp4">
         </video>
         <span class="ph-live-pill"><span class="pulse-dot"></span>LIVE</span>
@@ -445,17 +445,17 @@ export function landingPage(): string {
     <div class="container">
       <p class="eyebrow">Pricing</p>
       <h2 class="display section-title">Simple. One plan.</h2>
-      <p class="pricing-lede">Start with a free week. Keep going for $19/month, or cancel any time — no charge.</p>
+      <p class="pricing-lede">Add a card to start your free week — you won't be charged for 7 days. Keep going for $19/month, or cancel any time before then and pay nothing.</p>
       <div class="pricing-grid">
         <div class="price-card card">
           <div class="price-head">
             <h3>Free trial</h3>
             <p class="price-num display">Free<span class="price-per">for 7 days</span></p>
-            <p class="price-sub">The entire product, unlocked. No charge until your week is up.</p>
+            <p class="price-sub">The entire product, unlocked. Add a card to start — no charge until your week is up.</p>
           </div>
           <ul class="price-list">
             <li>${icon("check")}Everything in Pro</li>
-            <li>${icon("check")}No charge for 7 days</li>
+            <li>${icon("check")}Card required — $0 for 7 days</li>
             <li>${icon("check")}Cancel any time — no charge</li>
           </ul>
           <a class="btn btn-secondary btn-block price-cta" href="/signup">Start free</a>
@@ -522,7 +522,7 @@ export function landingPage(): string {
 // auth page
 // ---------------------------------------------------------------------------
 
-export function authPage(mode: "login" | "signup", error?: string): string {
+export function authPage(mode: "login" | "signup", error?: string, email?: string): string {
   const isSignup = mode === "signup";
   const heading = isSignup ? "Create your account" : "Welcome back";
   const sub = isSignup
@@ -544,10 +544,11 @@ export function authPage(mode: "login" | "signup", error?: string): string {
       ${icon("alert")}
       <span>${esc(error)}</span>
     </div>` : ""}
-    <form method="post" action="/${mode}" class="auth-form" novalidate>
+    <form method="post" action="/${mode}" class="auth-form">
       <div class="field">
         <label class="field-label" for="email">Email</label>
         <input class="input" type="email" id="email" name="email" autocomplete="email" required
+               value="${esc(email ?? "")}"
                placeholder="you@example.com" inputmode="email" autocapitalize="off" spellcheck="false">
       </div>
       <div class="field">
@@ -721,9 +722,10 @@ export function welcomePage(
     <h1 class="display wiz-title">Connect where we post</h1>
     <p class="wiz-sub">Connect one now, both later, or skip — you can always do this from the dashboard.</p>
     <div class="conn-grid wiz-conn-grid">
-      ${connectionCard({ platform: "instagram", configured: status.metaConfigured, conn: acct.instagram, csrf, from: "welcome" })}
       ${connectionCard({ platform: "tiktok", configured: status.tiktokConfigured, conn: acct.tiktok, csrf, from: "welcome" })}
-    </div>`;
+      ${connectionCard({ platform: "instagram", configured: status.metaConfigured, conn: acct.instagram, csrf, from: "welcome" })}
+    </div>
+    <p class="conn-reassure">${icon("lock")} Tapping Connect opens Instagram or TikTok so you can approve — ClipFlow never sees your password, and nothing posts until you're set up.</p>`;
     footerHtml = `
       <a class="btn btn-ghost" href="/welcome?step=2">Back</a>
       <a class="btn btn-primary btn-lg" href="/welcome?step=4">Next ${icon("arrow-right")}</a>`;
@@ -732,7 +734,7 @@ export function welcomePage(
     <h1 class="display wiz-title">How to clip on Whatnot</h1>
     <p class="wiz-sub">The one habit that makes everything else automatic.</p>
     ${howItWorksGrid(true)}
-    <p class="wiz-mode-note">${icon("clock")} You're in <strong>manual mode</strong> — hit <strong>Check for clips</strong> whenever you publish. Flip to automatic in your dashboard anytime.</p>`;
+    <p class="wiz-mode-note">${icon("radio")} You're starting in <strong>manual mode</strong> — after each show, tap <strong>Check for clips</strong> and we post them for you. Want it fully hands-off? Switch to <strong>Auto</strong> in your dashboard and we'll check automatically.</p>`;
     footerHtml = `
       <a class="btn btn-ghost" href="/welcome?step=3">Back</a>
       <form method="post" action="/welcome/complete" class="wiz-finish-form">
@@ -1131,7 +1133,7 @@ export function dashboard(
     ? `<p class="watch-line">Watching <strong class="mono">@${esc(uname)}</strong><span class="wn-display" data-wn-name></span>
         <button type="button" class="btn-icon" data-copy="https://www.whatnot.com/user/${esc(encodeURIComponent(uname))}"
                 aria-label="Copy Whatnot profile link" hidden>${icon("copy")}</button></p>`
-    : `<p class="watch-line watch-line-nudge">${icon("alert")} Set your Whatnot username so ClipFlow knows whose clips to watch. <a href="#settings">Go to settings</a></p>`;
+    : `<p class="watch-line">Let's get you set up ↓</p>`;
 
   const modePill = acct.enabled
     ? `<span class="pill ${mode === "auto" ? "pill-live" : "pill-neutral"}" data-mode-pill>${mode === "auto" ? '<span class="pulse-dot"></span>Auto-posting' : "Manual mode"}</span>`
@@ -1229,11 +1231,12 @@ export function dashboard(
       ${uname ? "" : whatnotSection}
 
       <section class="conn-grid" id="connections" aria-label="Platform connections">
-        ${connectionCard({ platform: "instagram", configured: status.metaConfigured, conn: acct.instagram, csrf })}
         ${connectionCard({ platform: "tiktok", configured: status.tiktokConfigured, conn: acct.tiktok, csrf })}
+        ${connectionCard({ platform: "instagram", configured: status.metaConfigured, conn: acct.instagram, csrf })}
       </section>
+      ${!hasConn ? `<p class="conn-reassure">${icon("lock")} Tapping Connect opens Instagram or TikTok so you can approve — ClipFlow never sees your password.</p>` : ""}
 
-      <section class="pipeline card" aria-label="Posting pipeline">
+      ${hasUname && hasConn ? `<section class="pipeline card" aria-label="Posting pipeline">
         <div class="pipe-node">
           ${uname ? whatnotAvatar(uname, "pfp-pipe") : platformAvatar("instagram", false, "pfp-pipe")}
           <span class="pipe-label">Whatnot${uname ? `<br><span class="mono">@${esc(uname)}</span>` : `<br><span class="pipe-pending-text">Not set</span>`}</span>
@@ -1258,9 +1261,9 @@ export function dashboard(
               : `TikTok<br><span class="pipe-pending-text">Not connected</span>`}</span>
           </div>
         </div>
-      </section>
+      </section>` : ""}
 
-      <section class="stats-row" aria-label="Stats">
+      ${hasActivity || hasConn ? `<section class="stats-row" aria-label="Stats">
         ${extras.stats ? `
         <div class="stat-card card"><span class="stat-num">${extras.stats.postedWeek}</span><span class="stat-label">Posted this week</span></div>
         <div class="stat-card card"><span class="stat-num">${extras.stats.pending}</span><span class="stat-label">Pending</span></div>
@@ -1269,7 +1272,7 @@ export function dashboard(
         <div class="stat-card card"><span class="stat-num">${posted}</span><span class="stat-label">Posted</span></div>
         <div class="stat-card card"><span class="stat-num">${pending}</span><span class="stat-label">Pending</span></div>`}
         <div class="stat-card card"><span class="stat-num">${connectedCount}<span class="stat-of">/2</span></span><span class="stat-label">Platforms connected</span></div>
-      </section>
+      </section>` : ""}
 
       ${uname ? whatnotSection : ""}
 
@@ -1286,15 +1289,15 @@ export function dashboard(
         ${clipsSection}
       </section>
 
-      ${studioCard}
+      ${hasUname && hasConn ? studioCard : ""}
 
-      <section class="section-block" id="captions">
+      ${hasUname ? `<section class="section-block" id="captions">
         <div class="section-head">
           <h2 class="display section-h">Your captions</h2>
           <span class="saved-flash" id="captions-saved" hidden>Saved ✓</span>
         </div>
         ${captionsCard}
-      </section>
+      </section>` : ""}
 
       <section class="section-block" id="account">
         <div class="section-head">

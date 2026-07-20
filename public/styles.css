@@ -373,10 +373,15 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
   .seg-btn, .seg > * { min-height: 44px; }
   /* The ⓘ help affordance is a keyboard/tap target on touch (hover is absent). */
   .mode-info { min-width: 44px; min-height: 44px; padding: var(--sp-3); }
-  .input, .textarea { min-height: 48px; }
+  /* 16px is the exact threshold below which iOS Safari zooms the page on input
+     focus — at 14px, tapping the signup email/password field zoomed + shifted
+     the whole layout. Touch-scoped, so desktop keeps its 14px inputs. */
+  .input, .textarea { min-height: 48px; font-size: 16px; }
   /* Account-menu rows + trigger appear on every app-shell page — clear 44px on touch. */
   .dropdown-trigger { min-height: 44px; }
   .dropdown-item { min-height: 44px; }
+  /* Mobile nav rows a thumb taps to move between pages. */
+  .side-link { min-height: 44px; }
 }
 .btn-lg { min-height: 48px; padding: var(--sp-4) var(--sp-8); font-size: var(--fs-3); border-radius: var(--r-lg); }
 .btn-block { width: 100%; }
@@ -1386,6 +1391,14 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-6);
 }
+/* Trust line shown right below the connect cards, at the moment of decision. */
+.conn-reassure {
+  display: flex; align-items: center; gap: var(--sp-3);
+  margin-top: var(--sp-4); padding: var(--sp-4) var(--sp-5);
+  background: var(--cool-soft); border: 1px solid rgba(110,139,255,.22);
+  border-radius: var(--r-md); color: var(--text-muted); font-size: var(--fs-2); line-height: 1.5;
+}
+.conn-reassure .icon { flex: none; width: 18px; height: 18px; color: var(--cool); }
 .conn-card {
   padding: var(--sp-7);
   display: flex;
@@ -1892,6 +1905,12 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 @media (max-width: 640px) {
   .wizard { padding: var(--sp-6); }
   .wiz-title { font-size: var(--fs-6); }
+  /* Onboarding is thumb-driven: the primary action becomes a full-width bar,
+     Back sits beneath it — no more tiny pill in the corner. */
+  .wiz-foot { flex-direction: column-reverse; align-items: stretch; gap: var(--sp-3); }
+  .wiz-foot .btn { width: 100%; justify-content: center; }
+  .wiz-foot .btn-ghost { margin-right: 0; }
+  .wiz-skip-form { width: 100%; }
 }
 
 /* ---- phone-frame illustration -------------------------------------------- */

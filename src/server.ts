@@ -302,14 +302,14 @@ app.post("/signup", async (req, res) => {
   const email = String(req.body.email ?? "").trim();
   const password = String(req.body.password ?? "");
   if (!EMAIL_RE.test(email) || email.length > 254) {
-    return res.status(400).send(authPage("signup", "That doesn't look like an email address."));
+    return res.status(400).send(authPage("signup", "That doesn't look like an email address.", email));
   }
   if (password.length < 8 || password.length > 200) {
-    return res.status(400).send(authPage("signup", "Password needs at least 8 characters."));
+    return res.status(400).send(authPage("signup", "Password needs at least 8 characters.", email));
   }
   const acct = await createAccount(email, password);
   if (!acct) {
-    return res.status(400).send(authPage("signup", "That email already has an account — try logging in."));
+    return res.status(400).send(authPage("signup", "That email already has an account — try logging in.", email));
   }
   // Verification email (console-logged in dev). Never blocks signup.
   const token = createToken(acct.id, "verify", 24 * 60);
@@ -327,8 +327,9 @@ app.post("/login", async (req, res) => {
   if (!rateLimit(`login:${ip(req)}`, 10)) {
     return res.status(429).send(authPage("login", "Too many attempts — wait a minute and try again."));
   }
-  const acct = await verifyLogin(String(req.body.email ?? ""), String(req.body.password ?? ""));
-  if (!acct) return res.status(401).send(authPage("login", "Wrong email or password."));
+  const loginEmail = String(req.body.email ?? "").trim();
+  const acct = await verifyLogin(loginEmail, String(req.body.password ?? ""));
+  if (!acct) return res.status(401).send(authPage("login", "Wrong email or password.", loginEmail));
   setSession(res, acct.id);
   res.redirect("/dashboard");
 });

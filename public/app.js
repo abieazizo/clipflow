@@ -22,6 +22,21 @@
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
+  // Hero video: on phones (and Data Saver) we keep the light real-frame poster
+  // and never fetch the ~20MB clip. On desktop we stream + loop it. This keeps
+  // the landing page fast on cellular — the poster alone already looks great.
+  (function heroVideo() {
+    var v = document.querySelector("[data-hero-video]");
+    if (!v) return;
+    var conn = navigator.connection || {};
+    var wideEnough = window.matchMedia("(min-width: 760px)").matches;
+    if (!wideEnough || conn.saveData || reducedMotion()) return; // poster stays
+    v.preload = "auto";
+    var go = function () { v.play().catch(function () {}); };
+    if (v.readyState >= 2) go(); else v.addEventListener("canplay", go, { once: true });
+    v.load();
+  })();
+
   // ------------------------------------------------------------------ toasts
   //
   // Disciplined toast system: auto-dismiss (4s, errors 6s) with a progress
@@ -1389,17 +1404,17 @@
     try { flash = JSON.parse(flashEl.textContent || "{}"); } catch (e) { /* ignore */ }
     var labels = { instagram: "Instagram", tiktok: "TikTok" };
     var errorMessages = {
-      zernio_not_configured: "Connections aren't available yet — the operator still needs to add the Zernio API key.",
-      zernio_plan_limit: "Zernio's plan limit reached — the free tier allows 2 connected accounts. Add a payment method at zernio.com to connect more.",
+      zernio_not_configured: "Connecting isn't switched on right now — nothing's wrong on your end. Please try again a little later.",
+      zernio_plan_limit: "We've hit a temporary limit on new connections — nothing's wrong on your end. Please try again later.",
       connect_failed: "Couldn't start the connection — please try again in a moment.",
-      connect_incomplete: "The connection didn't finish — no account came back. Try connecting again.",
+      connect_incomplete: "That didn't finish — no account came back. For Instagram, make sure it's a Business or Creator account, then try again.",
       bad_username: "That username doesn't look right — lowercase letters, numbers, dots and dashes only.",
       slow_down: "Easy does it — too many attempts at once. Give it a minute."
     };
     if (flash.connected) toast((labels[flash.connected] || flash.connected) + " connected — you're live", "success");
     if (flash.disconnected) {
       var pname = labels[flash.disconnected] || flash.disconnected;
-      if (flash.partial) toast(pname + " disconnected from ClipFlow. Heads up — we couldn't confirm removal on Zernio; it may already be gone.", "info", 8000);
+      if (flash.partial) toast(pname + " disconnected from ClipFlow. It may take a moment to clear on " + pname + "'s side.", "info", 8000);
       else toast(pname + " disconnected everywhere.", "success");
     }
     if (flash.error) toast(errorMessages[flash.error] || flash.error, "error", 7000);
