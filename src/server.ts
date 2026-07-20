@@ -125,6 +125,16 @@ app.use((req, _res, next) => {
 app.use("/fonts", express.static("public/fonts", { immutable: true, maxAge: "30d" }));
 app.use(express.static("public"));
 
+// Dynamic pages must always revalidate. iPhone Safari (heuristic + back-forward
+// cache) will otherwise re-render a stale HTML document, so a user never sees a
+// deploy's changes. `no-cache` + the ETag Express sets = a cheap 304 when
+// unchanged, fresh HTML when it changed. Static assets above keep their long
+// cache (the stylesheet is cache-busted via /styles.css?v=<mtime>).
+app.use((_req, res, next) => {
+  res.setHeader("Cache-Control", "no-cache");
+  next();
+});
+
 // ---------------------------------------------------------------------------
 // Rate limiting — in-memory sliding window (per key)
 // ---------------------------------------------------------------------------
