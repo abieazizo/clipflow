@@ -270,11 +270,10 @@ function illoFlow(): string {
   return phoneFrame(`
     <div class="ph-flow">
       <span class="ph-flow-cover"><img src="/demo/clip-squish.webp" alt="" loading="lazy" decoding="async"></span>
-      <svg class="ph-flow-lines" viewBox="0 0 120 100" fill="none" preserveAspectRatio="none">
-        <path class="ph-dash-track" d="M60 4 C 60 44, 30 52, 26 96"/>
-        <path class="ph-dash-track" d="M60 4 C 60 44, 90 52, 94 96"/>
-        <path class="ph-dash" d="M60 4 C 60 44, 30 52, 26 96"/>
-        <path class="ph-dash ph-dash-late" d="M60 4 C 60 44, 90 52, 94 96"/>
+      <svg class="ph-flow-conn" viewBox="0 0 24 30" fill="none" aria-hidden="true">
+        <path class="ph-conn-track" d="M12 1 V 21"/>
+        <path class="ph-conn-flow" d="M12 1 V 21"/>
+        <path class="ph-conn-head" d="M5.5 16 L 12 23 L 18.5 16"/>
       </svg>
       <div class="ph-flow-targets">
         <span class="ph-tile ph-tile-ig">${icon("instagram")}${icon("check", "ph-tile-check")}</span>
