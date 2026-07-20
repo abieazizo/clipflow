@@ -53,14 +53,14 @@
 
 :root {
   /* color */
-  --bg: #08080A;
-  --bg-1: #131318;
-  --bg-2: #191A1F;
-  --bg-3: #222329;
-  --border: #2F313A;         /* crisper card definition — edges you can actually see */
-  --border-strong: #424553;
-  --text: #F6F6F8;
-  --text-muted: #A2A3AD;     /* lifted for cleaner contrast on dark */
+  --bg: #0A0A0C;
+  --bg-1: #111114;
+  --bg-2: #17181C;
+  --bg-3: #1E2025;
+  --border: #26272D;
+  --border-strong: #34363E;
+  --text: #F4F4F6;
+  --text-muted: #9B9CA5;
   --text-faint: #8C8D97;
   --accent: #FF5A3C;          /* primary — CTAs, live/active only */
   --accent-hover: #FF6E54;
