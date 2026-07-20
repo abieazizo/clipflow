@@ -4,7 +4,11 @@
  *
  * Toasts · confirm modal (focus trap) · switch/password/chip inputs ·
  * caption live preview · connect-button loading · copy · dropdown ·
- * mobile nav · wizard username validation · manual check + posting mode ·
+ * mobile nav · wizard username validation · manual check (staged status +
+ * next-step results) · posting mode · guided-setup checklist (progress fill,
+ * jump-and-focus, how-to-clip sheet, all-done collapse) · sample-post demo ·
+ * one-time first-post celebration (confetti, motion-guarded) · help popovers ·
+ * "Need help?" launcher panel (focus trap) ·
  * thumbnail studio (async generate + skeleton + char count) ·
  * URL-query flash -> toast + history.replaceState cleanup.
  */
@@ -279,6 +283,38 @@
     });
   });
 
+  // Live password-strength meter (signup). Scores 0-4 from length + variety.
+  document.querySelectorAll("[data-strength]").forEach(function (input) {
+    var field = input.closest(".field");
+    var meter = field ? field.querySelector("[data-strength-meter]") : null;
+    if (!meter) return;
+    var bars = meter.querySelectorAll(".pw-bars span");
+    var label = meter.querySelector("[data-strength-label]");
+    var NAMES = ["Too short", "Weak", "Fair", "Good", "Strong"];
+    function score(v) {
+      if (v.length < 8) return 0;
+      var s = 0;
+      if (/[a-z]/.test(v)) s++;
+      if (/[A-Z]/.test(v)) s++;
+      if (/[0-9]/.test(v)) s++;
+      if (/[^A-Za-z0-9]/.test(v)) s++;
+      if (v.length >= 12 && s < 4) s++;          // reward length
+      if (v.length >= 8 && s === 0) s = 1;
+      return Math.max(1, Math.min(4, s));
+    }
+    function render() {
+      var v = input.value;
+      if (!v) { meter.hidden = true; return; }
+      meter.hidden = false;
+      var sc = score(v);
+      for (var i = 0; i < bars.length; i++) {
+        bars[i].className = i < sc ? "is-on lvl-" + sc : "";
+      }
+      if (label) label.textContent = NAMES[v.length < 8 ? 0 : sc];
+    }
+    input.addEventListener("input", render);
+  });
+
   // Live "repeat password" match check — shows a hint and blocks submit on mismatch.
   document.querySelectorAll("[data-match]").forEach(function (input) {
     var target = document.getElementById(input.getAttribute("data-match"));
@@ -483,36 +519,99 @@
     el.textContent = msg; el.hidden = !msg;
   }
 
-  // "Check for clips" — run a pass for just this account now.
+  // "Check for clips" — the new user's first real interaction. While it runs,
+  // staged status lines make the work visible; the result names the exact next
+  // step for every outcome (found / none yet / something missing).
+  function setCheckResult(text, linkText, linkHref) {
+    var el = document.querySelector("[data-check-result]");
+    if (!el) return;
+    el.textContent = text || "";
+    if (text && linkText && linkHref) {
+      el.appendChild(document.createTextNode(" "));
+      var a = document.createElement("a");
+      a.href = linkHref; a.textContent = linkText; a.className = "check-result-link";
+      el.appendChild(a);
+    }
+    el.hidden = !text;
+  }
+  function scrollFocus(sel, focusSel) {
+    var el = document.querySelector(sel);
+    if (el) el.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
+    if (focusSel) window.setTimeout(function () {
+      var f = document.querySelector(focusSel);
+      if (f && f.focus) f.focus({ preventScroll: true });
+    }, 380);
+  }
+
   document.querySelectorAll("[data-check]").forEach(function (btn) {
     btn.addEventListener("click", function () {
       if (btn.classList.contains("is-loading")) return;
       var uname = btn.getAttribute("data-username") || "";
       var label = btn.querySelector(".check-label");
       var orig = label ? label.textContent : "";
+      var stageTimers = [];
       btn.classList.add("is-loading"); btn.disabled = true;
-      if (label) label.textContent = "Checking @" + uname + "…";
-      showCheckResult("");
+      if (label) label.textContent = "Checking…";
+      setCheckResult("Looking at @" + uname + "'s clips…");
+      stageTimers.push(window.setTimeout(function () { setCheckResult("Checking for new published clips…"); }, 1600));
+      stageTimers.push(window.setTimeout(function () { setCheckResult("Still going — Whatnot can take a few seconds…"); }, 4500));
+      function done() {
+        stageTimers.forEach(function (t) { window.clearTimeout(t); });
+        btn.classList.remove("is-loading"); btn.disabled = false;
+        if (label) label.textContent = orig;
+      }
       fetch("/check", {
         method: "POST", headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ csrf: modeCsrf })
-      }).then(function (r) { return r.json().catch(function () { return { message: "Unexpected response — try again." }; }); })
+      }).then(function (r) { return r.json().catch(function () { return { error: "That didn't come back right — try again in a moment." }; }); })
         .then(function (json) {
-          btn.classList.remove("is-loading"); btn.disabled = false;
-          if (label) label.textContent = orig;
-          if (json.busy) { toast(json.message || "Already checking — one sec.", "info"); return; }
-          showCheckResult(json.message || "");
-          if (typeof json.found === "number" && json.found > 0) {
-            toast(json.message, "success", 6000);
-            window.setTimeout(function () { window.location.reload(); }, 1500);
-          } else {
-            toast(json.message || "No new clips.", "info", 6000);
+          done();
+          var code = json.code || (typeof json.found === "number" ? (json.found > 0 ? "found" : "none") : "error");
+          if (code === "busy") { setCheckResult(""); toast(json.message || "Already checking — one sec.", "info"); return; }
+          if (code === "found") {
+            setCheckResult(json.message || "Found new clips — posting now.");
+            if (json.firstFind) toast("🎉 First clip found — posting it now!", "success", 7000);
+            else toast(json.message, "success", 6000);
+            window.setTimeout(function () { window.location.reload(); }, json.firstFind ? 1800 : 1500);
+            return;
           }
+          if (code === "no_username") {
+            setCheckResult(json.message);
+            toast(json.message, "info", 6000);
+            scrollFocus("#whatnot-card", "#whatnotUsername");
+            return;
+          }
+          if (code === "no_connection") {
+            setCheckResult(json.message);
+            toast(json.message, "info", 6000);
+            scrollFocus("#connections");
+            return;
+          }
+          if (code === "locked") {
+            setCheckResult(json.message, "Add a card", "/billing");
+            toast(json.message, "info", 7000);
+            return;
+          }
+          if (code === "paused") {
+            setCheckResult(json.message);
+            toast(json.message, "info", 6000);
+            scrollFocus("#account");
+            return;
+          }
+          if (code === "error") {
+            setCheckResult("");
+            toast(json.error || "That didn't come back right — try again in a moment.", "error", 6000);
+            return;
+          }
+          // none — the honest, hopeful default
+          setCheckResult(json.message || "No new clips yet — publish one on your next show and check again.",
+            "How clipping works", "/guide#clipping");
+          toast(json.message || "No new clips yet — publish one on your next show and check again.", "info", 6000);
         })
         .catch(function () {
-          btn.classList.remove("is-loading"); btn.disabled = false;
-          if (label) label.textContent = orig;
-          toast("Network hiccup — check your connection and try again.", "error");
+          done();
+          setCheckResult("");
+          toast("Couldn't reach ClipFlow — check your connection and try again.", "error");
         });
     });
   });

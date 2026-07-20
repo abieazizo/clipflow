@@ -108,6 +108,12 @@ function migrate(d: Database.Database): void {
   // silently stops on upgrade.
   ensureColumn(d, "accounts", "postingMode", "TEXT NOT NULL DEFAULT 'auto'");
   ensureColumn(d, "accounts", "lastCheckedAt", "TEXT NULL");
+  // Guided-setup milestones. captionTouchedAt = the seller has actively chosen
+  // (or saved) a caption style; setupSeenAt = the "You're all set" collapse has
+  // been shown once; firstPostCelebratedAt = the one-time first-post moment fired.
+  ensureColumn(d, "accounts", "captionTouchedAt", "TEXT NULL");
+  ensureColumn(d, "accounts", "setupSeenAt", "TEXT NULL");
+  ensureColumn(d, "accounts", "firstPostCelebratedAt", "TEXT NULL");
 
   // Caption presets: the ONE-TIME backfill (runs only when the column is first
   // added) marks accounts whose template differs from the stock default as

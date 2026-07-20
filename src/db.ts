@@ -47,6 +47,12 @@ export interface Account {
   postingMode: "manual" | "auto";
   /** last time a full check ran for this account (manual check or auto pass) */
   lastCheckedAt: string | null;
+  /** the seller actively chose/saved a caption style (setup-checklist step 3) */
+  captionTouchedAt: string | null;
+  /** the "You're all set" setup-complete card has been shown once */
+  setupSeenAt: string | null;
+  /** the one-time "your first clip is live" celebration has fired */
+  firstPostCelebratedAt: string | null;
 }
 
 export type PostStatus = "pending" | "posted" | "failed";
@@ -100,6 +106,9 @@ function rowToAccount(r: any): Account {
     trialEmailSentAt: r.trialEmailSentAt,
     postingMode: r.postingMode === "manual" ? "manual" : "auto",
     lastCheckedAt: r.lastCheckedAt ?? null,
+    captionTouchedAt: r.captionTouchedAt ?? null,
+    setupSeenAt: r.setupSeenAt ?? null,
+    firstPostCelebratedAt: r.firstPostCelebratedAt ?? null,
   };
 }
 
@@ -224,6 +233,7 @@ const ACCOUNT_COLUMNS = new Set([
   "emailVerifiedAt", "plan", "trialEndsAt", "stripeCustomerId", "stripeSubscriptionId",
   "subscriptionStatus", "disabled", "lastFailureEmailAt", "trialEmailSentAt", "email",
   "postingMode", "lastCheckedAt", "captionPreset",
+  "captionTouchedAt", "setupSeenAt", "firstPostCelebratedAt",
 ]);
 
 /** Patch public fields (settings, platform connections, billing state). */
@@ -349,6 +359,17 @@ export function listPosts(accountId: string, limit = 100): PostRow[] {
   return getDb().prepare(
     "SELECT * FROM posts WHERE accountId = ? ORDER BY createdAt DESC LIMIT ?"
   ).all(accountId, limit) as PostRow[];
+}
+
+/** Lifetime totals — powers the setup checklist ("publish + first check" done
+ *  when any post row exists) and the one-time first-post celebration. */
+export function postTotals(accountId: string): { total: number; posted: number } {
+  const d = getDb();
+  const total = (d.prepare("SELECT COUNT(*) AS n FROM posts WHERE accountId = ?").get(accountId) as { n: number }).n;
+  const posted = (d.prepare(
+    "SELECT COUNT(*) AS n FROM posts WHERE accountId = ? AND status = 'posted'"
+  ).get(accountId) as { n: number }).n;
+  return { total, posted };
 }
 
 /** Stats for the dashboard row. */

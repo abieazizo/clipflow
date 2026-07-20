@@ -33,7 +33,7 @@ import {
   initDb, createAccount, verifyLogin, getAccount, getAccountByEmail, updateAccount,
   setPassword, verifyCurrentPassword, deleteAccountCascade,
   isActive, accountState, trialDaysLeft, TRIAL_DAYS,
-  postStats, listPosts, getPostById, updatePost,
+  postStats, postTotals, listPosts, getPostById, updatePost,
   createToken, consumeToken, peekToken, logEvent, adminStats, adminUserList, recentEvents,
   type Account,
 } from "./db.js";
@@ -256,6 +256,7 @@ function cleanUsername(raw: unknown): string | null {
 /** Everything a dashboard render needs beyond the account. */
 function dashboardExtras(acct: Account) {
   const thumbs = listKept(acct.id);
+  const totals = postTotals(acct.id);
   return Promise.resolve(thumbs).then((t) => ({
     csrf: csrfToken(acct.id),
     mode: acct.postingMode,
@@ -270,6 +271,14 @@ function dashboardExtras(acct: Account) {
       trialDays: TRIAL_DAYS,
     },
     showVerifyBanner: !acct.emailVerifiedAt && settings.mailConfigured,
+    // Guided-setup state: powers the 4-step checklist, the one-time
+    // "you're all set" collapse, and the one-time first-post celebration.
+    setup: {
+      captionTouched: Boolean(acct.captionTouchedAt),
+      hasPosts: totals.total > 0,
+      setupSeen: Boolean(acct.setupSeenAt),
+      celebrateFirstPost: totals.posted > 0 && !acct.firstPostCelebratedAt,
+    },
   }));
 }
 
@@ -551,10 +560,13 @@ app.post("/settings", async (req, res) => {
     return res.json({ ok: true, postingMode: mode });
   }
   // Caption-style auto-save (preset + hashtags; template too when Custom).
+  // Any deliberate caption save counts as "picked your caption style" for the
+  // setup checklist — stamp captionTouchedAt the first time.
   if (req.body.onlyCaption === "1" || req.body.onlyCaption === true) {
     const preset = String(req.body.captionPreset ?? "");
     if (!isCaptionPreset(preset)) return res.status(400).json({ ok: false, error: "Pick one of the caption styles." });
     const patch: Partial<Account> = { captionPreset: preset };
+    if (!acct.captionTouchedAt) patch.captionTouchedAt = new Date().toISOString();
     if (req.body.hashtags !== undefined) {
       patch.hashtags = String(req.body.hashtags ?? "")
         .split(/[\s,]+/).map((h) => h.trim().replace(/^#+/, "").slice(0, 30)).filter(Boolean).slice(0, 30);
@@ -585,27 +597,61 @@ app.post("/settings", async (req, res) => {
   const hashtags = String(req.body.hashtags ?? "")
     .split(/[\s,]+/).map((h) => h.trim().replace(/^#+/, "").slice(0, 30)).filter(Boolean).slice(0, 30);
   const enabled = req.body.enabled === "on";
-  await updateAccount(acct.id, { whatnotUsername: uname, captionTemplate, hashtags, enabled });
+  await updateAccount(acct.id, {
+    whatnotUsername: uname, captionTemplate, hashtags, enabled,
+    ...(acct.captionTouchedAt ? {} : { captionTouchedAt: new Date().toISOString() }),
+  });
   res.redirect("/dashboard?saved=1");
 });
 
+// One-time UX milestones the client marks as seen: the "You're all set" setup
+// collapse and the first-post celebration. Idempotent; only ever sets a stamp.
+app.post("/milestone", async (req, res) => {
+  const acct = currentAccount(req);
+  if (!acct) return res.status(401).json({ ok: false, error: "Log in first." });
+  if (!csrfOk(acct, req.body.csrf)) return res.status(403).json({ ok: false, error: "That form expired — reload and try again." });
+  const kind = String(req.body.kind ?? "");
+  const now = new Date().toISOString();
+  if (kind === "setup-seen") {
+    if (!acct.setupSeenAt) await updateAccount(acct.id, { setupSeenAt: now });
+  } else if (kind === "first-post") {
+    if (!acct.firstPostCelebratedAt) await updateAccount(acct.id, { firstPostCelebratedAt: now });
+  } else {
+    return res.status(400).json({ ok: false, error: "Unknown milestone." });
+  }
+  res.json({ ok: true });
+});
+
 // Manual "Check for clips" — run a full engine pass for JUST this account, now.
+// Every outcome carries a `code` so the client can offer the exact next step
+// (jump to the username field, the connect cards, billing…) instead of a
+// generic message. `firstFind` marks the account's first-ever discovered clip.
 app.post("/check", async (req, res) => {
   const acct = currentAccount(req);
   if (!acct) return res.status(401).json({ ok: false, error: "Log in first." });
   if (!csrfOk(acct, req.body.csrf)) return res.status(403).json({ ok: false, error: "That form expired — reload and try again." });
   if (!rateLimit(`check:${acct.id}`, 6)) return res.status(429).json({ ok: false, error: "Easy — you can check a few times a minute. Give it a moment." });
-  if (!acct.enabled) return res.json({ found: 0, queued: 0, alreadyPosted: 0, message: "ClipFlow is paused — turn it back on in Settings first." });
-  if (!acct.whatnotUsername) return res.json({ found: 0, queued: 0, alreadyPosted: 0, message: "Add your Whatnot username in settings first." });
-  if (!isActive(acct, settings.stripeConfigured)) return res.json({ found: 0, queued: 0, alreadyPosted: 0, message: "Add a card to unlock posting — nothing posts until then." });
-  if (!acct.instagram && !acct.tiktok) return res.json({ found: 0, queued: 0, alreadyPosted: 0, message: "Connect Instagram or TikTok first, then check." });
+  const blocked = (code: string, message: string) =>
+    res.json({ found: 0, queued: 0, alreadyPosted: 0, code, message });
+  if (!acct.enabled) return blocked("paused", "ClipFlow is paused — flip it back on in the Account section below, then check again.");
+  if (!acct.whatnotUsername) return blocked("no_username", "Add your Whatnot handle first — that's how we know whose clips to look for.");
+  if (!isActive(acct, settings.stripeConfigured)) return blocked("locked", "Add a card to unlock posting — your first week is free, and nothing posts until then.");
+  if (!acct.instagram && !acct.tiktok) return blocked("no_connection", "Connect Instagram or TikTok first — that's where your clips will go.");
 
+  const hadPosts = postTotals(acct.id).total > 0;
   const r = await checkAccount(acct);
-  if ("busy" in r) return res.json({ busy: true, message: "Already checking — one sec." });
-  const message = r.found > 0
-    ? `Found ${r.found} new clip${r.found === 1 ? "" : "s"} — posting now.`
-    : "No new clips. Publish a clip on Whatnot, then check again.";
-  res.json({ found: r.found, queued: r.queued, alreadyPosted: r.alreadyPosted, message });
+  if ("busy" in r) return res.json({ busy: true, code: "busy", message: "Already checking — one sec." });
+  if (r.found > 0) {
+    return res.json({
+      found: r.found, queued: r.queued, alreadyPosted: r.alreadyPosted,
+      code: "found", firstFind: !hadPosts,
+      message: `Found ${r.found} new clip${r.found === 1 ? "" : "s"} — posting ${r.found === 1 ? "it" : "them"} now.`,
+    });
+  }
+  res.json({
+    found: 0, queued: r.queued, alreadyPosted: r.alreadyPosted, code: "none",
+    message: "No new clips yet — publish one on your next show and check again.",
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1018,7 +1064,7 @@ app.post("/thumbnails/generate", async (req, res) => {
 app.post("/thumbnails/keep/:id", async (req, res) => {
   const acct = currentAccount(req);
   if (!acct) return res.status(401).json({ ok: false, error: "Log in first." });
-  if (!csrfOk(acct, req.body.csrf)) return res.status(403).json({ ok: false, error: "csrf" });
+  if (!csrfOk(acct, req.body.csrf)) return res.status(403).json({ ok: false, error: "That form expired — reload and try again." });
   const id = String(req.params.id).toLowerCase();
   if (!UUID_RE.test(id) || !(await keepThumb(acct.id, id))) return res.status(404).json({ ok: false, error: "Not found." });
   if (String(req.body.discard ?? "1") !== "0") await discardSiblings(acct.id, id);
@@ -1029,7 +1075,7 @@ app.post("/thumbnails/keep/:id", async (req, res) => {
 app.post("/thumbnails/regen/:id", async (req, res) => {
   const acct = currentAccount(req);
   if (!acct) return res.status(401).json({ ok: false, error: "Log in first." });
-  if (!csrfOk(acct, req.body.csrf)) return res.status(403).json({ ok: false, error: "csrf" });
+  if (!csrfOk(acct, req.body.csrf)) return res.status(403).json({ ok: false, error: "That form expired — reload and try again." });
   if (!settings.geminiConfigured) return res.status(400).json({ ok: false, error: "AI thumbnails are locked." });
   const id = String(req.params.id).toLowerCase();
   if (!UUID_RE.test(id)) return res.status(404).json({ ok: false, error: "Not found." });
@@ -1057,7 +1103,7 @@ app.post("/thumbnails/regen/:id", async (req, res) => {
 app.post("/thumbnails/delete/:id", async (req, res) => {
   const acct = currentAccount(req);
   if (!acct) return res.status(401).json({ ok: false, error: "Log in first." });
-  if (!csrfOk(acct, req.body.csrf)) return res.status(403).json({ ok: false, error: "csrf" });
+  if (!csrfOk(acct, req.body.csrf)) return res.status(403).json({ ok: false, error: "That form expired — reload and try again." });
   const id = String(req.params.id).toLowerCase();
   if (!UUID_RE.test(id)) return res.status(404).json({ ok: false, error: "Not found." });
   // removeThumb returns false when nothing matched (unknown id or not this

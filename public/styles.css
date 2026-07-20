@@ -444,6 +444,19 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 .field-match { color: var(--danger); margin-top: var(--sp-2); }
 .input[aria-invalid="true"] { border-color: var(--danger); }
 
+/* Password strength meter (signup) */
+.pw-strength { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); }
+.pw-bars { display: flex; gap: 4px; flex: 1; }
+.pw-bars span {
+  flex: 1; height: 5px; border-radius: var(--r-full);
+  background: var(--bg-3); transition: background var(--dur-2) var(--ease);
+}
+.pw-bars span.is-on.lvl-1 { background: var(--danger); }
+.pw-bars span.is-on.lvl-2 { background: var(--warning); }
+.pw-bars span.is-on.lvl-3 { background: #d4c73a; }
+.pw-bars span.is-on.lvl-4 { background: var(--success); }
+.pw-label { font-size: var(--fs-1); font-weight: 600; color: var(--text-muted); min-width: 62px; text-align: right; }
+
 .input, .textarea {
   font: inherit;
   font-size: var(--fs-2);

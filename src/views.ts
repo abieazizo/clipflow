@@ -161,6 +161,24 @@ function platformAvatar(platform: "instagram" | "tiktok", connected: boolean, ex
 }
 
 // ---------------------------------------------------------------------------
+// inline help — a "?" affordance that opens a plain-English popover exactly
+// where doubt happens. app.js wires the toggle (aria-expanded + hidden); the
+// deep link lands on the matching /guide anchor for the long answer.
+// ---------------------------------------------------------------------------
+
+function helpTip(id: string, question: string, answerHtml: string, learnHref: string, learnLabel = "Learn more"): string {
+  return `<span class="help-tip" data-help-tip>
+    <button type="button" class="help-tip-btn" aria-expanded="false" aria-controls="tip-${id}"
+            aria-label="Help: ${esc(question)}">${icon("help-circle")}</button>
+    <span class="help-pop" id="tip-${id}" role="note" hidden>
+      <strong>${esc(question)}</strong>
+      <span>${answerHtml}</span>
+      <a href="${learnHref}">${esc(learnLabel)} ${icon("arrow-right")}</a>
+    </span>
+  </span>`;
+}
+
+// ---------------------------------------------------------------------------
 // layout
 // ---------------------------------------------------------------------------
 
@@ -556,12 +574,17 @@ export function authPage(mode: "login" | "signup", error?: string, email?: strin
         <div class="input-affix">
           <input class="input" type="password" id="password" name="password" required minlength="8"
                  autocomplete="${isSignup ? "new-password" : "current-password"}"
-                 placeholder="${isSignup ? "At least 8 characters" : "Your password"}">
+                 placeholder="${isSignup ? "At least 8 characters" : "Your password"}"${isSignup ? ' data-strength' : ""}>
           <button type="button" class="input-affix-btn" data-toggle-password="password"
                   aria-label="Show password" aria-pressed="false" hidden>
             ${icon("eye", "icon-eye")}${icon("eye-off", "icon-eye-off")}
           </button>
         </div>
+        ${isSignup ? `
+        <div class="pw-strength" data-strength-meter hidden aria-hidden="true">
+          <div class="pw-bars"><span></span><span></span><span></span><span></span></div>
+          <span class="pw-label" data-strength-label></span>
+        </div>` : ""}
       </div>
       ${isSignup ? `
       <div class="field">
@@ -625,11 +648,15 @@ function connectionCard(o: ConnCardOpts): string {
       <button class="btn btn-secondary" type="button" disabled aria-disabled="true">
         ${icon(o.platform)} Connect ${label}
       </button>
-      <p class="conn-unavailable">${icon("alert")} Setup pending — the operator still needs to add API keys.</p>`;
+      <p class="conn-unavailable">${icon("alert")} Connecting isn't switched on just yet — nothing's wrong on your end. Check back soon.</p>`;
   }
 
   const igExtras = o.platform === "instagram" ? `
-    <p class="conn-note">Instagram must be a <strong>Business or Creator</strong> account linked to a Facebook Page.</p>
+    <p class="conn-note">Instagram must be a <strong>Business or Creator</strong> account linked to a Facebook Page. ${helpTip(
+      `ig-biz${o.from ? "-wiz" : ""}`,
+      "Why Business or Creator?",
+      `That's Instagram's own rule for any tool that posts for you — not ours. Switching is free, takes about 60 seconds in the Instagram app, and changes nothing about how your page looks.`,
+      "/guide#instagram", "60-second fix")}</p>
     <details class="mini-accordion">
       <summary>60-second fix ${icon("chevron-down", "faq-caret")}</summary>
       <div class="faq-a-wrap"><div class="faq-a">
@@ -709,7 +736,11 @@ export function welcomePage(
     <form method="post" action="/welcome/username" class="wiz-form" id="wiz-username-form">
       <input type="hidden" name="csrf" value="${esc(csrf)}">
       <div class="field">
-        <label class="field-label" for="whatnotUsername">Whatnot username</label>
+        <label class="field-label" for="whatnotUsername">Whatnot username ${helpTip(
+          "uname-wiz",
+          "Where do I find this?",
+          `It's your @ name on Whatnot — the bit after <strong>whatnot.com/user/…</strong> on your profile. The same name your buyers see.`,
+          "/guide#clipping")}</label>
         <div class="input-affix input-affix-lead">
           <span class="input-lead" aria-hidden="true">@</span>
           <input class="input input-lg" type="text" id="whatnotUsername" name="whatnotUsername"
@@ -784,7 +815,66 @@ ${jsonIsland("cf-flash", { connected: query.connected ?? null, error: query.erro
 
 type NavKey = "overview" | "thumbnails" | "history" | "billing" | "guide" | "status" | "admin";
 
-function appShell(acct: Account, active: NavKey, content: string, flash?: unknown): string {
+/** Live setup state the dashboard passes so the help panel can show it. */
+interface HelpSetupState {
+  hasUname: boolean;
+  hasConn: boolean;
+  captionDone: boolean;
+  hasPosts: boolean;
+}
+
+/**
+ * The persistent "Need help?" launcher — one unobtrusive tap from anywhere in
+ * the app to the setup checklist, the guide, and the FAQ. app.js handles the
+ * toggle, focus trap, and Escape; with JS off the links inside still work
+ * because the panel is plain markup (JS un-hides the launcher).
+ */
+function helpLauncher(setup?: HelpSetupState | null): string {
+  const row = (done: boolean, label: string, href: string) => `
+      <li class="help-setup-row${done ? " is-done" : ""}">
+        <a href="${href}">${done ? icon("check-circle") : icon("chevron-right")}<span>${esc(label)}</span></a>
+        ${done ? `<span class="help-done-tag">Done</span>` : ""}
+      </li>`;
+  const setupBlock = setup ? `
+    <div class="help-setup">
+      <p class="help-group-label" id="help-setup-label">Your setup</p>
+      <ul class="help-setup-list" aria-labelledby="help-setup-label">
+        ${row(setup.hasUname, "Add your Whatnot handle", "/dashboard#settings")}
+        ${row(setup.hasConn, "Connect Instagram or TikTok", "/dashboard#connections")}
+        ${row(setup.captionDone, "Pick your caption style", "/dashboard#captions")}
+        ${row(setup.hasPosts, "Publish a clip & run your first check", "/dashboard#clips")}
+      </ul>
+    </div>` : "";
+  return `
+  <div class="help-root" data-help-root>
+    <button type="button" class="help-launcher" data-help-toggle
+            aria-expanded="false" aria-controls="help-panel" hidden>
+      ${icon("help-circle")}<span class="help-launcher-text">Need help?</span>
+    </button>
+    <div class="help-panel card" id="help-panel" role="dialog" aria-modal="true" aria-labelledby="help-panel-title" hidden>
+      <div class="help-head">
+        <h2 class="help-title display" id="help-panel-title">Need a hand?</h2>
+        <button type="button" class="btn-icon" data-help-close aria-label="Close help">${icon("x")}</button>
+      </div>
+      ${setupBlock}
+      <nav class="help-links" aria-label="Help topics">
+        ${setup ? "" : `<a href="/dashboard#get-started">${icon("bolt")}<span>Your dashboard &amp; setup</span></a>`}
+        <a href="/guide#clipping">${icon("clip")}<span>How clipping works</span></a>
+        <a href="/guide#instagram">${icon("instagram")}<span>Instagram requirements</span></a>
+        <a href="/guide#captions">${icon("sparkles")}<span>Caption styles</span></a>
+        <a href="/guide#faq">${icon("book")}<span>All the FAQs</span></a>
+        <a href="/status">${icon("activity")}<span>Is it working right now?</span></a>
+        <a href="mailto:${CONTACT_EMAIL}">${icon("arrow-right")}<span>Email a human</span></a>
+      </nav>
+      <div class="help-faq">
+        <p class="help-group-label">Quick answers</p>
+        ${faqAccordion(FAQ_ITEMS.slice(0, 3))}
+      </div>
+    </div>
+  </div>`;
+}
+
+function appShell(acct: Account, active: NavKey, content: string, flash?: unknown, help?: HelpSetupState | null): string {
   const navLink = (key: NavKey | "clips" | "settings", href: string, ic: string, text: string) => `
     <a class="side-link${key === active ? " is-active" : ""}" href="${href}"${key === active ? ' aria-current="page"' : ""}>${icon(ic)}<span>${text}</span></a>`;
 
@@ -847,6 +937,7 @@ function appShell(acct: Account, active: NavKey, content: string, flash?: unknow
     </main>
   </div>
 </div>
+${helpLauncher(help)}
 ${flash !== undefined ? jsonIsland("cf-flash", flash) : ""}`;
 }
 
@@ -883,6 +974,13 @@ export interface DashboardExtras {
     trialDays: number;
   };
   showVerifyBanner?: boolean;
+  /** guided-setup state: the 4-step checklist + one-time moments */
+  setup?: {
+    captionTouched: boolean;
+    hasPosts: boolean;
+    setupSeen: boolean;
+    celebrateFirstPost: boolean;
+  };
 }
 
 export function dashboard(
@@ -958,10 +1056,13 @@ export function dashboard(
     ? `
     <div class="empty-state card">
       ${illoClip()}
-      <h3>No clips yet</h3>
+      <h3>No clips yet — here's what it'll look like</h3>
       <p>${emptyCopy}</p>
-      ${checkButton ? `<div class="empty-check">${checkButton}</div>` : ""}
-      <a class="text-link" href="/guide">See how clipping works ${icon("arrow-right")}</a>
+      <div class="empty-check">
+        ${checkButton}
+        <button type="button" class="btn btn-secondary" data-demo-open>${icon("eye")} Preview a sample post</button>
+      </div>
+      <a class="text-link" href="/guide#clipping">See how clipping works ${icon("arrow-right")}</a>
     </div>`
     : `<ul class="clips-grid">${clips.map(clipCard).join("")}</ul>`;
 
@@ -989,11 +1090,11 @@ export function dashboard(
         <span class="studio-icon">${icon("lock")}</span>
         <div>
           <h2 class="section-h display">Show Covers</h2>
-          <p>Add a Gemini API key to unlock the cover studio — your products, bold type, one loud colour.</p>
+          <p>Almost ready — once it's switched on, you'll design show covers from your real products right here.</p>
         </div>
       </div>
       <div class="studio-actions">
-        <a class="text-link" href="/guide#gemini">How to get a key ${icon("arrow-right")}</a>
+        <a class="text-link" href="/guide#gemini">How covers get switched on ${icon("arrow-right")}</a>
       </div>
     </section>`;
 
@@ -1011,7 +1112,11 @@ export function dashboard(
   const whatnotCard = `
   <div class="card settings-card${uname ? "" : " settings-card-empty"}" data-csrf="${esc(csrf)}" id="whatnot-card">
     <div class="field">
-      <label class="field-label" for="whatnotUsername">Whatnot username${uname ? "" : ` <span class="start-here">Start here</span>`}</label>
+      <label class="field-label" for="whatnotUsername">Whatnot username${uname ? "" : ` <span class="start-here">Start here</span>`} ${helpTip(
+        "uname",
+        "Where do I find this?",
+        `It's your @ name on Whatnot — the bit after <strong>whatnot.com/user/…</strong> on your profile. The same name your buyers see.`,
+        "/guide#clipping")}</label>
       <div class="whatnot-row">
         <div class="input-affix input-affix-lead">
           <span class="input-lead" aria-hidden="true">@</span>
@@ -1146,7 +1251,7 @@ export function dashboard(
     ? `<p class="watch-line">Watching <strong class="mono">@${esc(uname)}</strong><span class="wn-display" data-wn-name></span>
         <button type="button" class="btn-icon" data-copy="https://www.whatnot.com/user/${esc(encodeURIComponent(uname))}"
                 aria-label="Copy Whatnot profile link" hidden>${icon("copy")}</button></p>`
-    : `<p class="watch-line">Let's get you set up ↓</p>`;
+    : `<p class="watch-line">Let's get your streams everywhere — your first step is right above ↑</p>`;
 
   const modePill = acct.enabled
     ? `<span class="pill ${mode === "auto" ? "pill-live" : "pill-neutral"}" data-mode-pill>${mode === "auto" ? '<span class="pulse-dot"></span>Auto-posting' : "Manual mode"}</span>`
@@ -1192,40 +1297,83 @@ export function dashboard(
     : "";
 
   // ---- guided setup checklist (new users) -----------------------------------
-  // The single clearest thing a first-timer needs: what to do next. Shows the
-  // three setup steps with live progress and one tap each; vanishes once done.
+  // The new user's north star: four real steps with live completion state, one
+  // tap each, and a progress bar. When all four are done it collapses into a
+  // one-time "You're all set" confirmation (setupSeenAt remembers it was seen).
   const hasUname = Boolean(uname);
   const hasConn = connectedCount > 0;
   const hasActivity = Boolean(extras.lastCheckedAt) || total > 0;
-  const doneCount = [hasUname, hasConn, hasActivity].filter(Boolean).length;
-  const setupStep = (done: boolean, n: string, title: string, desc: string, ctaHref: string, ctaLabel: string) => `
+  const setup = extras.setup ?? { captionTouched: false, hasPosts: total > 0, setupSeen: true, celebrateFirstPost: false };
+  const captionDone = setup.captionTouched;
+  const hasPosts = setup.hasPosts;
+  const doneCount = [hasUname, hasConn, captionDone, hasPosts].filter(Boolean).length;
+  const allDone = doneCount === 4;
+  const setupStep = (done: boolean, n: string, title: string, desc: string, cta: string) => `
     <li class="setup-step${done ? " is-done" : ""}">
       <span class="setup-num" aria-hidden="true">${done ? icon("check") : n}</span>
-      <div class="setup-text"><strong>${title}</strong><span>${desc}</span></div>
-      ${done ? `<span class="setup-done-tag">Done</span>` : `<a class="btn btn-sm btn-primary setup-cta" href="${ctaHref}">${ctaLabel}</a>`}
+      <div class="setup-text">
+        <strong><span class="visually-hidden">${done ? "Done: " : "To do: "}</span>${title}</strong>
+        <span>${desc}</span>
+      </div>
+      ${done ? `<span class="setup-done-tag">${icon("check-circle")}Done</span>` : cta}
     </li>`;
-  const setupChecklist = doneCount === 3 ? "" : `
-    <section class="setup-card card" aria-label="Get set up" id="get-started">
+  const setupHeadline = doneCount === 0
+    ? "Let's get your clips posting themselves"
+    : doneCount === 3 ? "One step to go" : `Nice — ${doneCount} of 4 done`;
+  const checklistCard = `
+    <section class="setup-card card" aria-labelledby="setup-title" id="get-started">
       <div class="setup-head">
         <p class="eyebrow">Get set up</p>
-        <h2 class="display setup-title">${doneCount === 0 ? "Let's get your clips posting" : `Nearly there — ${doneCount} of 3 done`}</h2>
-        <p class="setup-sub">Three quick steps, then ClipFlow posts your Whatnot clips for you.</p>
-        <div class="setup-progress" aria-hidden="true"><span style="width:${(doneCount / 3) * 100}%"></span></div>
+        <h2 class="display setup-title" id="setup-title">${setupHeadline}</h2>
+        <p class="setup-sub">Four quick steps, then every clip you publish posts itself.</p>
+        <div class="setup-progress-row">
+          <div class="setup-progress" role="progressbar" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${doneCount}"
+               aria-label="Setup progress: ${doneCount} of 4 done"><span data-setup-fill style="width:${(doneCount / 4) * 100}%"></span></div>
+          <span class="setup-progress-label">${doneCount} of 4 done</span>
+        </div>
       </div>
       <ol class="setup-steps">
-        ${setupStep(hasUname, "1", "Add your Whatnot username", "So we know whose clips to watch.", "#settings", "Add it")}
-        ${setupStep(hasConn, "2", "Connect Instagram or TikTok", "Where your clips get posted.", "#connections", "Connect")}
-        ${setupStep(hasActivity, "3", "Publish a clip, then tap Check", "On your next show, hit Clip — then Check for clips here.", "#clips", "Show me")}
+        ${setupStep(hasUname, "1", "Add your Whatnot handle", "So we know whose clips to watch.",
+          `<a class="btn btn-sm btn-primary setup-cta" href="#settings" data-setup-goto="whatnotUsername">Add it</a>`)}
+        ${setupStep(hasConn, "2", "Connect Instagram or TikTok", "Where your clips get posted — one is enough to start.",
+          `<a class="btn btn-sm btn-primary setup-cta" href="#connections">Connect</a>`)}
+        ${setupStep(captionDone, "3", "Pick your caption style", "The words under every post — choose a voice once.",
+          `<a class="btn btn-sm btn-primary setup-cta" href="#captions">Pick a style</a>`)}
+        ${setupStep(hasPosts, "4", "Publish a clip on Whatnot & run your first check", "Tap Clip during your show, publish it after, then check here.",
+          `<button type="button" class="btn btn-sm btn-primary setup-cta" data-howto-clip>Show me how</button>`)}
       </ol>
     </section>`;
+  const setupDoneCard = `
+    <section class="setup-done-card card" id="get-started" role="status" data-setup-complete data-csrf="${esc(csrf)}">
+      <span class="setup-done-icon" aria-hidden="true">${icon("check-circle")}</span>
+      <div class="setup-done-text">
+        <h2 class="display">You're all set 🎉</h2>
+        <p>ClipFlow is watching <strong class="mono">@${esc(uname)}</strong>. Publish a clip on your next show and it posts itself — that's the whole job.</p>
+      </div>
+      <button type="button" class="btn-icon setup-done-close" data-setup-dismiss aria-label="Dismiss">${icon("x")}</button>
+    </section>`;
+  const setupChecklist = allDone ? (setup.setupSeen ? "" : setupDoneCard) : checklistCard;
+
+  // One-time first-post celebration — announced politely; confetti (app.js) is
+  // motion-guarded and purely decorative.
+  const celebrationBanner = setup.celebrateFirstPost ? `
+    <div class="celebrate-banner card" role="status" data-celebrate data-csrf="${esc(csrf)}">
+      <span class="celebrate-emoji" aria-hidden="true">🎉</span>
+      <div class="celebrate-text">
+        <strong>Your first clip is live!</strong>
+        <span>It's posted and out in the world. Every clip you publish from now on takes the same trip — automatically.</span>
+      </div>
+    </div>` : "";
 
   const content = `
+      ${celebrationBanner}
+      ${setupChecklist}
       ${upgradeBanner}${verifyBanner}
       <section class="page-head" id="overview">
         <div class="page-head-main">
           ${uname ? whatnotAvatar(uname, "pfp-hero") : ""}
           <div class="page-head-text">
-            <p class="eyebrow">${esc(timeGreeting())}</p>
+            <p class="eyebrow">${allDone ? esc(timeGreeting()) : "Welcome"}</p>
             <h1 class="display page-title">${esc(firstName(acct.email))}</h1>
             ${watchLine}
           </div>
@@ -1238,8 +1386,6 @@ export function dashboard(
           ${trialPill}
         </div>
       </section>
-
-      ${setupChecklist}
 
       ${uname ? "" : whatnotSection}
 
@@ -1304,13 +1450,17 @@ export function dashboard(
 
       ${hasUname && hasConn ? studioCard : ""}
 
-      ${hasUname ? `<section class="section-block" id="captions">
+      <section class="section-block" id="captions">
         <div class="section-head">
-          <h2 class="display section-h">Your captions</h2>
+          <h2 class="display section-h">Your captions ${helpTip(
+            "captions",
+            "What's this for?",
+            `This is what gets written under every post — pick a voice once and every clip uses it. You can change it any time.`,
+            "/guide#captions")}</h2>
           <span class="saved-flash" id="captions-saved" hidden>Saved ✓</span>
         </div>
         ${captionsCard}
-      </section>` : ""}
+      </section>
 
       <section class="section-block" id="account">
         <div class="section-head">
@@ -1363,7 +1513,59 @@ export function dashboard(
                     data-confirm-action="Delete forever">Delete my account</button>
           </form>
         </div>
-      </section>`;
+      </section>
+
+      ${total === 0 ? `
+      <template id="demo-post-template">
+        <div class="demo" role="dialog" aria-modal="true" aria-labelledby="demo-title">
+          <button type="button" class="chooser-close" data-demo-close aria-label="Close preview">${icon("x")}</button>
+          <span class="pill pill-neutral demo-sample-pill">${icon("eye")}Sample — nothing gets posted</span>
+          <h2 class="demo-title display" id="demo-title">What happens when you publish a clip</h2>
+          <div class="demo-flow">
+            <figure class="demo-stage">
+              <div class="demo-clip" aria-hidden="true">
+                <img src="/demo/clip-squish.webp" alt="">
+                <span class="pill pill-live"><span class="pulse-dot"></span>Clip</span>
+                <span class="demo-clip-title">${esc(sampleTitle)}</span>
+              </div>
+              <figcaption>1 · You publish a clip on <strong class="mono">@${esc(uname || "your Whatnot")}</strong></figcaption>
+            </figure>
+            <div class="demo-arrow" aria-hidden="true">${icon("arrow-right")}</div>
+            <figure class="demo-stage">
+              <div class="demo-caption" aria-hidden="true">
+                <span class="demo-caption-head"><span class="preset-demo-avatar">${esc(initials(acct.email))}</span>@${esc(uname || "yourhandle")}</span>
+                <p>${esc(previewCaption)}</p>
+              </div>
+              <figcaption>2 · ClipFlow writes your ${esc(acct.captionPreset === "custom" ? "custom" : acct.captionPreset)} caption</figcaption>
+            </figure>
+            <div class="demo-arrow" aria-hidden="true">${icon("arrow-right")}</div>
+            <figure class="demo-stage">
+              <div class="demo-posted" aria-hidden="true">
+                <span class="pill pill-posted">${icon("instagram")}Posted to Instagram ${icon("check")}</span>
+                <span class="pill pill-posted">${icon("tiktok")}Posted to TikTok ${icon("check")}</span>
+              </div>
+              <figcaption>3 · …and posts it while you keep selling</figcaption>
+            </figure>
+          </div>
+          <p class="demo-note">${icon("check-circle")} This is a sample built from your settings. Publish a real clip and this exact flow runs for real.</p>
+        </div>
+      </template>
+
+      <template id="howto-clip-template">
+        <div class="howto" role="dialog" aria-modal="true" aria-labelledby="howto-title">
+          <button type="button" class="chooser-close" data-howto-close aria-label="Close">${icon("x")}</button>
+          <h2 class="display howto-title" id="howto-title">How to publish a clip</h2>
+          <ol class="mini-steps howto-steps">
+            <li><strong>During your show</strong>, tap the <strong>Clip</strong> button — Whatnot saves the last 60 seconds.</li>
+            <li><strong>After the show</strong>, open your clips in the Whatnot app and tap <strong>Publish</strong>. Only published clips show on your public profile — private ones are invisible to everyone, including us.</li>
+            <li><strong>Back here</strong>, tap <strong>Check for clips</strong> and we find it and post it for you.</li>
+          </ol>
+          <div class="howto-actions">
+            <a class="text-link" href="/guide#clipping">See it with pictures ${icon("arrow-right")}</a>
+            <button type="button" class="btn btn-primary" data-howto-done>Got it</button>
+          </div>
+        </div>
+      </template>` : ""}`;
 
   const flash = {
     connected: query.connected ?? null,
@@ -1375,7 +1577,9 @@ export function dashboard(
     billing: query.billing ?? null,
   };
 
-  return layout("Dashboard — ClipFlow", appShell(acct, "overview", content, flash));
+  return layout("Dashboard — ClipFlow", appShell(acct, "overview", content, flash, {
+    hasUname, hasConn, captionDone, hasPosts,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -1408,9 +1612,9 @@ export function thumbnailsPage(
     const locked = `
       <section class="card studio-locked" aria-label="Show Covers studio (locked)">
         <span class="studio-icon">${icon("lock")}</span>
-        <h2 class="display section-h">Unlock Show Covers</h2>
-        <p>Add a <strong>Gemini API key</strong> to design show covers built on the winning Whatnot formula — your real products cut out and collaged, a bold text wall, one loud colour. Every headline is set in crisp brand type, so the spelling is always perfect. Grab a free key at aistudio.google.com, paste it into <code>.env</code> as <code>GEMINI_API_KEY</code>, and restart.</p>
-        <a class="text-link" href="/guide#gemini">Full instructions ${icon("arrow-right")}</a>
+        <h2 class="display section-h">Show Covers is almost ready</h2>
+        <p>This is where you'll design covers that pack your next show — your real products cut out and collaged, a bold text wall, one loud colour, perfect spelling every time. It just needs one thing switched on by whoever runs your ClipFlow. The step-by-step is in the guide.</p>
+        <a class="text-link" href="/guide#gemini">How it gets switched on ${icon("arrow-right")}</a>
       </section>`;
     return layout("Show Covers — ClipFlow", appShell(acct, "thumbnails",
       `<section class="page-head"><div>
@@ -1610,8 +1814,26 @@ export function guidePage(acct: Account): string {
           <p class="watch-line">Three steps on Whatnot's side, zero on yours after that.</p>
         </div>
       </section>
-      <section class="section-block">
+      <section class="section-block" id="clipping">
         ${howItWorksGrid()}
+      </section>
+      <section class="section-block" id="instagram">
+        <div class="section-head"><h2 class="display section-h">Instagram requirements</h2></div>
+        <div class="card guide-gemini">
+          <p>Instagram only lets tools post on your behalf when your account is a <strong>Business or Creator</strong> account linked to a Facebook Page — that's Instagram's rule for every tool, not ours. The switch is free, takes about a minute, and changes nothing about how your page looks:</p>
+          <ol class="mini-steps">
+            <li>Instagram app → <strong>Settings</strong></li>
+            <li><strong>Account type and tools</strong></li>
+            <li><strong>Switch to professional account</strong> → pick Business or Creator, then link your Facebook Page when asked.</li>
+          </ol>
+          <p>TikTok has no equivalent requirement — any TikTok account connects as-is.</p>
+        </div>
+      </section>
+      <section class="section-block" id="captions">
+        <div class="section-head"><h2 class="display section-h">Captions, explained</h2></div>
+        <div class="card guide-gemini">
+          <p>Every post ClipFlow makes gets a caption written in your chosen voice — set it once in <a href="/dashboard#captions">your dashboard</a> and forget it. <strong>Hype</strong>, <strong>Chill</strong>, and <strong>Minimal</strong> are ready-made; <strong>Custom</strong> is your own words, with <code>{title}</code>, <code>{hashtags}</code>, and <code>{username}</code> filled in for each clip automatically.</p>
+        </div>
       </section>
       <section class="section-block" id="faq">
         <div class="section-head"><h2 class="display section-h">FAQ</h2></div>
@@ -1620,7 +1842,7 @@ export function guidePage(acct: Account): string {
       <section class="section-block" id="gemini">
         <div class="section-head"><h2 class="display section-h">Show Covers setup</h2></div>
         <div class="card guide-gemini">
-          <p>The Show Covers studio uses Google Gemini. To unlock it, the operator adds one key:</p>
+          <p>The Show Covers studio needs one thing switched on by whoever runs your ClipFlow — a free Google Gemini key. If that's you:</p>
           <ol class="mini-steps">
             <li>Create a free API key at <strong>aistudio.google.com</strong> (API keys section).</li>
             <li>Paste it into <code>.env</code> as <code>GEMINI_API_KEY=…</code></li>
