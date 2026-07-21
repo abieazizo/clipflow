@@ -1745,9 +1745,12 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 @media (max-width: 960px) {
   .sidebar { display: none; }
   .topbar { display: flex; }
-  .content { padding: var(--sp-6) var(--sp-5) var(--sp-11); }
-  .hero-grid { grid-template-columns: 1fr; gap: var(--sp-10); }
-  .hero { padding: var(--sp-10) 0 var(--sp-11); }
+  /* Dense phone rhythm — sections breathe in ~24px, not 32px+, so a page scans
+     in a few swipes instead of a marathon scroll. */
+  .content { padding: var(--sp-6) var(--sp-5) var(--sp-11); gap: var(--sp-7); }
+  .section-block { gap: var(--sp-5); }
+  .hero-grid { grid-template-columns: 1fr; gap: var(--sp-8); }
+  .hero { padding: var(--sp-9) 0 var(--sp-10); }
   .steps-grid, .features-grid { grid-template-columns: 1fr 1fr; }
   .stats-row { grid-template-columns: 1fr 1fr; }
 }
