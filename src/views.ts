@@ -779,7 +779,7 @@ export function welcomePage(
     <h1 class="display wiz-title">How to clip on Whatnot</h1>
     <p class="wiz-sub">The one habit that makes everything else automatic.</p>
     ${howItWorksGrid(true)}
-    <p class="wiz-mode-note">${icon("radio")} You're starting in <strong>manual mode</strong> — after each show, tap <strong>Check for clips</strong> and we post them for you. Want it fully hands-off? Switch to <strong>Auto</strong> in your dashboard and we'll check automatically.</p>`;
+    <p class="wiz-mode-note">${icon("radio")}<span>You're starting in <strong>manual mode</strong> — after each show, tap <strong>Check for clips</strong> and we post them for you. Want it fully hands-off? Switch to <strong>Auto</strong> in your dashboard and we'll check automatically.</span></p>`;
     footerHtml = `
       <a class="btn btn-ghost" href="/welcome?step=3">Back</a>
       <form method="post" action="/welcome/complete" class="wiz-finish-form">
@@ -814,7 +814,7 @@ ${jsonIsland("cf-flash", { connected: query.connected ?? null, error: query.erro
 // app shell (dashboard · thumbnails · guide · status)
 // ---------------------------------------------------------------------------
 
-type NavKey = "overview" | "thumbnails" | "history" | "billing" | "guide" | "status" | "admin";
+type NavKey = "overview" | "thumbnails" | "history" | "billing" | "guide" | "status" | "admin" | "settings";
 
 /** Live setup state the dashboard passes so the help panel can show it. */
 interface HelpSetupState {
@@ -840,10 +840,9 @@ function helpLauncher(setup?: HelpSetupState | null): string {
     <div class="help-setup">
       <p class="help-group-label" id="help-setup-label">Your setup</p>
       <ul class="help-setup-list" aria-labelledby="help-setup-label">
-        ${row(setup.hasUname, "Add your Whatnot handle", "/dashboard#settings")}
-        ${row(setup.hasConn, "Connect Instagram or TikTok", "/dashboard#connections")}
-        ${row(setup.captionDone, "Pick your caption style", "/dashboard#captions")}
-        ${row(setup.hasPosts, "Publish a clip & run your first check", "/dashboard#clips")}
+        ${row(setup.hasUname, "Add your Whatnot handle", "/dashboard")}
+        ${row(setup.hasConn, "Connect Instagram or TikTok", "/dashboard")}
+        ${row(setup.hasPosts, "Publish a clip & run your first check", "/dashboard")}
       </ul>
     </div>` : "";
   return `
@@ -880,27 +879,33 @@ function helpLauncher(setup?: HelpSetupState | null): string {
 /**
  * ONE nav model drives every navigation surface — the mobile bottom tab bar,
  * the mobile Menu sheet, and the desktop sidebar — so they can never drift.
- * `primary` = the four thumb tabs; `menu` = everything that lives behind the
- * Menu tab on a phone (and appears inline in the desktop sidebar).
+ * It's STAGE-AWARE: while a seller is still setting up (`active` false) the
+ * only tabs are Home + Guide, so nothing competes with the one job in front of
+ * them. Once they're posting (`active` true) the full set unlocks — Clips and
+ * Covers become tabs and Guide tucks into the Menu. `primary` = the thumb tabs;
+ * `menu` = everything behind the Menu tab (and inline in the desktop sidebar).
  */
-function navModel(acct: Account) {
-  const primary: Array<{ key: NavKey; href: string; icon: string; label: string }> = [
-    { key: "overview", href: "/dashboard", icon: "bolt", label: "Home" },
-    { key: "history", href: "/history", icon: "activity", label: "Clips" },
-    { key: "thumbnails", href: "/thumbnails", icon: "wand", label: "Covers" },
-    { key: "guide", href: "/guide", icon: "book", label: "Guide" },
-  ];
+function navModel(acct: Account, active: boolean) {
+  const HOME = { key: "overview" as NavKey, href: "/dashboard", icon: "bolt", label: "Home" };
+  const CLIPS = { key: "history" as NavKey, href: "/history", icon: "activity", label: "Clips" };
+  const COVERS = { key: "thumbnails" as NavKey, href: "/thumbnails", icon: "wand", label: "Covers" };
+  const GUIDE = { key: "guide" as NavKey, href: "/guide", icon: "book", label: "Guide" };
+
+  const primary: Array<{ key: NavKey; href: string; icon: string; label: string }> =
+    active ? [HOME, CLIPS, COVERS] : [HOME, GUIDE];
+
   const menu: Array<{ key: NavKey | "settings"; href: string; icon: string; label: string }> = [
+    ...(active ? [GUIDE] : []),
+    { key: "settings", href: "/settings", icon: "settings", label: "Settings" },
     { key: "billing", href: "/billing", icon: "check-circle", label: "Billing" },
-    { key: "settings", href: "/dashboard#settings", icon: "settings", label: "Settings" },
     { key: "status", href: "/status", icon: "radio", label: "System status" },
     ...(acct.isAdmin ? [{ key: "admin" as NavKey, href: "/admin", icon: "lock", label: "Admin" }] : []),
   ];
   return { primary, menu };
 }
 
-function appShell(acct: Account, active: NavKey, content: string, flash?: unknown, help?: HelpSetupState | null): string {
-  const nav = navModel(acct);
+function appShell(acct: Account, active: NavKey, content: string, flash?: unknown, help?: HelpSetupState | null, navActive = true): string {
+  const nav = navModel(acct, navActive);
   const navLink = (key: string, href: string, ic: string, text: string) => `
     <a class="side-link${key === active ? " is-active" : ""}" href="${href}"${key === active ? ' aria-current="page"' : ""}>${icon(ic)}<span>${text}</span></a>`;
 
@@ -1036,6 +1041,197 @@ export interface DashboardExtras {
   };
 }
 
+// ---------------------------------------------------------------------------
+// shared settings building blocks — kept OUT of the new-user dashboard so
+// captions + account never clutter the core "get posting" flow. They live on
+// the /settings page (see settingsPage). All IDs match the AJAX handlers in
+// app.js, so a save works identically wherever the markup is rendered.
+// ---------------------------------------------------------------------------
+
+const CAPTION_PRESET_META: Array<{ key: "hype" | "chill" | "minimal"; label: string; blurb: string }> = [
+  { key: "hype", label: "Hype", blurb: "Loud, live-show energy" },
+  { key: "chill", label: "Chill", blurb: "Friendly and low-key" },
+  { key: "minimal", label: "Minimal", blurb: "Just the essentials" },
+];
+
+/** The Whatnot handle field (editable in Settings; separate from stage-1 setup). */
+function whatnotFieldCard(acct: Account, csrf: string): string {
+  const uname = acct.whatnotUsername;
+  return `
+  <div class="card settings-card" data-csrf="${esc(csrf)}" id="whatnot-card">
+    <div class="field">
+      <span class="label-row"><label class="field-label" for="whatnotUsername">Whatnot username</label>${helpTip(
+        "uname",
+        "Where do I find this?",
+        `It's your @ name on Whatnot — the bit after <strong>whatnot.com/user/…</strong> on your profile. The same name your buyers see.`,
+        "/guide#clipping")}</span>
+      <div class="whatnot-row">
+        <div class="input-affix input-affix-lead">
+          <span class="input-lead" aria-hidden="true">@</span>
+          <input class="input" type="text" id="whatnotUsername" name="whatnotUsername"
+                 value="${esc(uname)}" placeholder="yourhandle" autocomplete="off"
+                 autocapitalize="off" spellcheck="false" data-username-live maxlength="30">
+        </div>
+        <button type="button" class="btn btn-primary" id="save-username" data-loading-text="Saving…">Save username</button>
+      </div>
+      <p class="field-hint">The public Whatnot handle whose clips ClipFlow watches — the bit after whatnot.com/user/.</p>
+    </div>
+  </div>`;
+}
+
+/** The full caption picker (presets + custom editor + hashtags + live preview). */
+function captionsEditor(acct: Account, csrf: string): string {
+  const uname = acct.whatnotUsername;
+  const hashtagsValue = acct.hashtags.join(" ");
+  const previewVars = { title: "🔥 $1 SQUISHIES ALL NIGHT — NONSTOP GIVEAWAYS", username: uname || "yourhandle", hashtags: acct.hashtags };
+  const previewCaption = renderTemplate(effectiveTemplate(acct), previewVars);
+  const presetCards = CAPTION_PRESET_META.map((p) => {
+    const demo = renderTemplate(CAPTION_PRESETS[p.key], previewVars);
+    return `
+      <label class="preset-card${acct.captionPreset === p.key ? " is-selected" : ""}" data-preset="${p.key}" data-template="${esc(CAPTION_PRESETS[p.key])}">
+        <input type="radio" name="captionPreset" value="${p.key}" class="visually-hidden"${acct.captionPreset === p.key ? " checked" : ""}>
+        <span class="preset-name"><strong>${p.label}</strong><small>${p.blurb}</small></span>
+        <span class="preset-demo" aria-hidden="true">
+          <span class="preset-demo-head"><span class="preset-demo-avatar">${esc(initials(acct.email))}</span>@${esc(uname || "yourhandle")}</span>
+          <span class="preset-demo-text">${esc(demo)}</span>
+        </span>
+      </label>`;
+  }).join("") + `
+      <label class="preset-card preset-card-custom${acct.captionPreset === "custom" ? " is-selected" : ""}" data-preset="custom">
+        <input type="radio" name="captionPreset" value="custom" class="visually-hidden"${acct.captionPreset === "custom" ? " checked" : ""}>
+        <span class="preset-name"><strong>Custom</strong><small>Write your own</small></span>
+        <span class="preset-demo preset-demo-custom" aria-hidden="true">${icon("wand")}<span>Your words, exactly how you type them.</span></span>
+      </label>`;
+
+  const customEditor = `
+    <div class="custom-editor" id="custom-editor"${acct.captionPreset === "custom" ? "" : " hidden"}>
+      <div class="field">
+        <label class="field-label" for="captionTemplate">Your caption template</label>
+        <div class="token-chips" data-token-target="captionTemplate" hidden>
+          <span class="field-hint">Insert:</span>
+          <button type="button" class="chip chip-token" data-token="{title}">{title}</button>
+          <button type="button" class="chip chip-token" data-token="{hashtags}">{hashtags}</button>
+          <button type="button" class="chip chip-token" data-token="{username}">{username}</button>
+        </div>
+        <textarea class="textarea" id="captionTemplate" rows="4" maxlength="2200"
+                  placeholder="{title}&#10;&#10;{hashtags}">${esc(acct.captionTemplate)}</textarea>
+        <p class="field-hint"><code>{title}</code> becomes the clip's title · <code>{hashtags}</code> your hashtags · <code>{username}</code> your Whatnot handle.</p>
+      </div>
+      <button type="button" class="btn btn-primary" id="save-template" data-loading-text="Saving…">Save caption</button>
+    </div>`;
+
+  return `
+  <div class="captions-grid" id="captions-root" data-csrf="${esc(csrf)}" data-preset="${esc(acct.captionPreset)}">
+    <div class="card settings-card captions-main">
+      <p class="field-label captions-q">How should your captions sound?</p>
+      <div class="preset-grid" role="radiogroup" aria-label="Caption style">${presetCards}</div>
+      ${customEditor}
+      <div class="field field-hashtags">
+        <label class="field-label" for="hashtags">Hashtags</label>
+        <div class="chip-input" id="hashtag-chip-input" hidden>
+          <ul class="chip-list" id="hashtag-chip-list" aria-label="Current hashtags"></ul>
+          <input class="chip-input-field" type="text" id="hashtag-entry"
+                 placeholder="Add a hashtag, press Enter" autocomplete="off"
+                 autocapitalize="off" spellcheck="false" aria-describedby="hashtag-hint">
+        </div>
+        <input class="input" type="text" id="hashtags" name="hashtags" value="${esc(hashtagsValue)}"
+               placeholder="whatnot live smallbusiness" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <p class="field-hint" id="hashtag-hint">Separate with spaces or commas — the # is added for you.</p>
+        <div class="suggest-row" id="suggest-tags" data-uname="${esc(uname)}" hidden>
+          <span class="field-hint">Suggested:</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-col">
+      <div class="preview-card card" aria-label="Live caption preview">
+        <div class="preview-tabs" role="group" aria-label="Preview network">
+          <button type="button" class="preview-tab is-active" data-net="instagram" aria-pressed="true">Instagram</button>
+          <button type="button" class="preview-tab" data-net="tiktok" aria-pressed="false">TikTok</button>
+        </div>
+        <div class="preview-head">
+          <span class="preview-avatar avatar" aria-hidden="true">${esc(initials(acct.email))}</span>
+          <div class="preview-id">
+            <strong id="preview-handle">@${esc(uname || "yourhandle")}</strong>
+            <small id="preview-net-label">Instagram · Reel caption</small>
+          </div>
+          <span class="preview-net-wrap">${icon("instagram", "preview-net-icon net-ig")}${icon("tiktok", "preview-net-icon net-tt")}</span>
+        </div>
+        <div class="preview-thumb" aria-hidden="true">
+          ${logoMark(36)}
+          <span class="pill pill-live"><span class="pulse-dot"></span>Clip</span>
+        </div>
+        <p class="preview-caption" id="caption-preview">${esc(previewCaption)}</p>
+        <p class="field-hint">Live preview with a sample clip title.</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+/** Pause toggle + credentials + danger zone (danger last). */
+function accountCards(acct: Account, csrf: string): string {
+  const pauseCard = `
+  <div class="card settings-card pause-card" data-csrf="${esc(csrf)}">
+    <label class="switch">
+      <input type="checkbox" id="pause-switch" role="switch" ${acct.enabled ? "checked" : ""}>
+      <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+      <span class="switch-label">
+        <strong id="pause-title">${acct.enabled ? "ClipFlow is on" : "Paused"}</strong>
+        <small id="pause-copy">${acct.enabled ? "Checking and posting normally." : "Paused — nothing checks or posts until you turn this back on."}</small>
+      </span>
+    </label>
+  </div>`;
+  return `
+    ${pauseCard}
+    <div class="account-grid">
+      <form method="post" action="/account/password" class="card account-card">
+        <input type="hidden" name="csrf" value="${esc(csrf)}">
+        <h3>Change password</h3>
+        <div class="field">
+          <label class="field-label" for="pw-current">Current password</label>
+          <input class="input" type="password" id="pw-current" name="current" autocomplete="current-password" required>
+        </div>
+        <div class="field">
+          <label class="field-label" for="pw-new">New password</label>
+          <input class="input" type="password" id="pw-new" name="next" minlength="8" autocomplete="new-password" required>
+        </div>
+        <button class="btn btn-secondary" type="submit" data-loading-text="Updating…">Update password</button>
+      </form>
+
+      <form method="post" action="/account/email" class="card account-card">
+        <input type="hidden" name="csrf" value="${esc(csrf)}">
+        <h3>Change email</h3>
+        <p class="field-hint">${acct.emailVerifiedAt
+          ? `Verified as <strong>${esc(acct.email)}</strong>. A new address needs re-verification.`
+          : `Currently <strong>${esc(acct.email)}</strong> — not verified yet.`}</p>
+        <div class="field">
+          <label class="field-label" for="email-new">New email</label>
+          <input class="input" type="email" id="email-new" name="email" autocomplete="email" required placeholder="new@example.com">
+        </div>
+        <div class="account-card-actions">
+          <button class="btn btn-secondary" type="submit" data-loading-text="Sending…">Change email</button>
+          ${acct.emailVerifiedAt ? "" : `<button class="btn btn-ghost" type="submit" formaction="/account/resend-verification">Resend verification</button>`}
+        </div>
+      </form>
+
+      <form method="post" action="/account/delete" class="card account-card account-danger" id="delete-account-form">
+        <input type="hidden" name="csrf" value="${esc(csrf)}">
+        <h3>Delete account</h3>
+        <p class="field-hint">Cancels any subscription, deletes your data, clips, and covers. This cannot be undone.</p>
+        <div class="field">
+          <label class="field-label" for="delete-confirm">Type your email to confirm</label>
+          <input class="input" type="text" id="delete-confirm" name="confirm" autocomplete="off"
+                 inputmode="email" autocapitalize="off" spellcheck="false"
+                 placeholder="${esc(acct.email)}" data-expected-email="${esc(acct.email)}">
+        </div>
+        <button class="btn btn-danger" type="submit"
+                data-confirm-title="Delete your account?"
+                data-confirm-body="Your subscription is cancelled and every clip, cover, and setting is permanently removed."
+                data-confirm-action="Delete forever">Delete my account</button>
+      </form>
+    </div>`;
+}
+
 export function dashboard(
   acct: Account,
   status: { metaConfigured: boolean; tiktokConfigured: boolean },
@@ -1119,184 +1315,10 @@ export function dashboard(
     </div>`
     : `<ul class="clips-grid">${clips.map(clipCard).join("")}</ul>`;
 
-  // ---- thumbnail studio card -------------------------------------------------
-
-  const gem = extras.gemini ?? { configured: false, thumbCount: 0 };
-  const studioCard = gem.configured
-    ? `
-    <section class="studio-card card" aria-label="Show Covers studio">
-      <div class="studio-copy">
-        <span class="studio-icon">${icon("wand")}</span>
-        <div>
-          <h2 class="section-h display">Show Covers</h2>
-          <p>Covers that pack your next show — designed from your real products.</p>
-        </div>
-      </div>
-      <div class="studio-actions">
-        ${gem.thumbCount > 0 ? `<span class="pill pill-neutral">${icon("image")}${gem.thumbCount} generated</span>` : ""}
-        <a class="btn btn-primary" href="/thumbnails">${gem.thumbCount > 0 ? "Open studio" : "Design your first"} ${icon("arrow-right")}</a>
-      </div>
-    </section>`
-    : `
-    <section class="studio-card card is-locked" aria-label="Show Covers studio (locked)">
-      <div class="studio-copy">
-        <span class="studio-icon">${icon("lock")}</span>
-        <div>
-          <h2 class="section-h display">Show Covers</h2>
-          <p>Almost ready — once it's switched on, you'll design show covers from your real products right here.</p>
-        </div>
-      </div>
-      <div class="studio-actions">
-        <a class="text-link" href="/guide#gemini">How covers get switched on ${icon("arrow-right")}</a>
-      </div>
-    </section>`;
-
-  // ---- settings ---------------------------------------------------------------
-
-  const hashtagsValue = acct.hashtags.join(" ");
+  // Sample values for the stage-3 "preview a sample post" demo.
   const sampleTitle = "🔥 $1 SQUISHIES ALL NIGHT — NONSTOP GIVEAWAYS";
   const previewVars = { title: sampleTitle, username: uname || "yourhandle", hashtags: acct.hashtags };
   const previewCaption = renderTemplate(effectiveTemplate(acct), previewVars);
-
-  // ---- card 1: Your Whatnot ---------------------------------------------------
-
-  // When there's no username yet, this is the single most important field on the
-  // page — it's promoted to the top with an accent ring and a "Start here" cue.
-  const whatnotCard = `
-  <div class="card settings-card${uname ? "" : " settings-card-empty"}" data-csrf="${esc(csrf)}" id="whatnot-card">
-    <div class="field">
-      <span class="label-row"><label class="field-label" for="whatnotUsername">Whatnot username${uname ? "" : ` <span class="start-here">Start here</span>`}</label>${helpTip(
-        "uname",
-        "Where do I find this?",
-        `It's your @ name on Whatnot — the bit after <strong>whatnot.com/user/…</strong> on your profile. The same name your buyers see.`,
-        "/guide#clipping")}</span>
-      <div class="whatnot-row">
-        <div class="input-affix input-affix-lead">
-          <span class="input-lead" aria-hidden="true">@</span>
-          <input class="input" type="text" id="whatnotUsername" name="whatnotUsername"
-                 value="${esc(uname)}" placeholder="yourhandle" autocomplete="off"
-                 autocapitalize="off" spellcheck="false" data-username-live maxlength="30">
-        </div>
-        <button type="button" class="btn btn-primary" id="save-username" data-loading-text="Saving…">Save username</button>
-      </div>
-      <p class="field-hint">${uname
-        ? "The public Whatnot handle whose clips ClipFlow watches — the bit after whatnot.com/user/."
-        : "Add the handle from your Whatnot profile URL (whatnot.com/user/<strong>yourhandle</strong>) so we know whose clips to watch."}</p>
-    </div>
-  </div>`;
-
-  // Reorderable "Your Whatnot" section — promoted above connections when empty.
-  const whatnotSection = `
-      <section class="section-block${uname ? "" : " section-promoted"}" id="settings">
-        <div class="section-head">
-          <h2 class="display section-h">Your Whatnot</h2>
-          <span class="saved-flash" id="whatnot-saved" hidden>Saved ✓</span>
-        </div>
-        ${whatnotCard}
-      </section>`;
-
-  // ---- card 2: Your captions ----------------------------------------------------
-
-  const PRESET_META: Array<{ key: "hype" | "chill" | "minimal"; label: string; blurb: string }> = [
-    { key: "hype", label: "Hype", blurb: "Loud, live-show energy" },
-    { key: "chill", label: "Chill", blurb: "Friendly and low-key" },
-    { key: "minimal", label: "Minimal", blurb: "Just the essentials" },
-  ];
-  const presetCards = PRESET_META.map((p) => {
-    const demo = renderTemplate(CAPTION_PRESETS[p.key], previewVars);
-    return `
-      <label class="preset-card${acct.captionPreset === p.key ? " is-selected" : ""}" data-preset="${p.key}" data-template="${esc(CAPTION_PRESETS[p.key])}">
-        <input type="radio" name="captionPreset" value="${p.key}" class="visually-hidden"${acct.captionPreset === p.key ? " checked" : ""}>
-        <span class="preset-name"><strong>${p.label}</strong><small>${p.blurb}</small></span>
-        <span class="preset-demo" aria-hidden="true">
-          <span class="preset-demo-head"><span class="preset-demo-avatar">${esc(initials(acct.email))}</span>@${esc(uname || "yourhandle")}</span>
-          <span class="preset-demo-text">${esc(demo)}</span>
-        </span>
-      </label>`;
-  }).join("") + `
-      <label class="preset-card preset-card-custom${acct.captionPreset === "custom" ? " is-selected" : ""}" data-preset="custom">
-        <input type="radio" name="captionPreset" value="custom" class="visually-hidden"${acct.captionPreset === "custom" ? " checked" : ""}>
-        <span class="preset-name"><strong>Custom</strong><small>Write your own</small></span>
-        <span class="preset-demo preset-demo-custom" aria-hidden="true">${icon("wand")}<span>Your words, exactly how you type them.</span></span>
-      </label>`;
-
-  const customEditor = `
-    <div class="custom-editor" id="custom-editor"${acct.captionPreset === "custom" ? "" : " hidden"}>
-      <div class="field">
-        <label class="field-label" for="captionTemplate">Your caption template</label>
-        <div class="token-chips" data-token-target="captionTemplate" hidden>
-          <span class="field-hint">Insert:</span>
-          <button type="button" class="chip chip-token" data-token="{title}">{title}</button>
-          <button type="button" class="chip chip-token" data-token="{hashtags}">{hashtags}</button>
-          <button type="button" class="chip chip-token" data-token="{username}">{username}</button>
-        </div>
-        <textarea class="textarea" id="captionTemplate" rows="4" maxlength="2200"
-                  placeholder="{title}&#10;&#10;{hashtags}">${esc(acct.captionTemplate)}</textarea>
-        <p class="field-hint"><code>{title}</code> becomes the clip's title · <code>{hashtags}</code> your hashtags · <code>{username}</code> your Whatnot handle.</p>
-      </div>
-      <button type="button" class="btn btn-primary" id="save-template" data-loading-text="Saving…">Save caption</button>
-    </div>`;
-
-  const captionsCard = `
-  <div class="captions-grid" id="captions-root" data-csrf="${esc(csrf)}" data-preset="${esc(acct.captionPreset)}">
-    <div class="card settings-card captions-main">
-      <p class="field-label captions-q">How should your captions sound?</p>
-      <div class="preset-grid" role="radiogroup" aria-label="Caption style">${presetCards}</div>
-      ${customEditor}
-      <div class="field field-hashtags">
-        <label class="field-label" for="hashtags">Hashtags</label>
-        <div class="chip-input" id="hashtag-chip-input" hidden>
-          <ul class="chip-list" id="hashtag-chip-list" aria-label="Current hashtags"></ul>
-          <input class="chip-input-field" type="text" id="hashtag-entry"
-                 placeholder="Add a hashtag, press Enter" autocomplete="off"
-                 autocapitalize="off" spellcheck="false" aria-describedby="hashtag-hint">
-        </div>
-        <input class="input" type="text" id="hashtags" name="hashtags" value="${esc(hashtagsValue)}"
-               placeholder="whatnot live smallbusiness" autocomplete="off" autocapitalize="off" spellcheck="false">
-        <p class="field-hint" id="hashtag-hint">Separate with spaces or commas — the # is added for you.</p>
-        <div class="suggest-row" id="suggest-tags" data-uname="${esc(uname)}" hidden>
-          <span class="field-hint">Suggested:</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="settings-col">
-      <div class="preview-card card" aria-label="Live caption preview">
-        <div class="preview-tabs" role="group" aria-label="Preview network">
-          <button type="button" class="preview-tab is-active" data-net="instagram" aria-pressed="true">Instagram</button>
-          <button type="button" class="preview-tab" data-net="tiktok" aria-pressed="false">TikTok</button>
-        </div>
-        <div class="preview-head">
-          <span class="preview-avatar avatar" aria-hidden="true">${esc(initials(acct.email))}</span>
-          <div class="preview-id">
-            <strong id="preview-handle">@${esc(uname || "yourhandle")}</strong>
-            <small id="preview-net-label">Instagram · Reel caption</small>
-          </div>
-          <span class="preview-net-wrap">${icon("instagram", "preview-net-icon net-ig")}${icon("tiktok", "preview-net-icon net-tt")}</span>
-        </div>
-        <div class="preview-thumb" aria-hidden="true">
-          ${logoMark(36)}
-          <span class="pill pill-live"><span class="pulse-dot"></span>Clip</span>
-        </div>
-        <p class="preview-caption" id="caption-preview">${esc(previewCaption)}</p>
-        <p class="field-hint">Live preview with a sample clip title.</p>
-      </div>
-    </div>
-  </div>`;
-
-  // ---- card 3: Account (pause + credentials + danger) --------------------------
-
-  const pauseCard = `
-  <div class="card settings-card pause-card" data-csrf="${esc(csrf)}">
-    <label class="switch">
-      <input type="checkbox" id="pause-switch" role="switch" ${acct.enabled ? "checked" : ""}>
-      <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-      <span class="switch-label">
-        <strong id="pause-title">${acct.enabled ? "ClipFlow is on" : "Paused"}</strong>
-        <small id="pause-copy">${acct.enabled ? "Checking and posting normally." : "Paused — nothing checks or posts until you turn this back on."}</small>
-      </span>
-    </label>
-  </div>`;
 
   // ---- header row -------------------------------------------------------------
 
@@ -1349,67 +1371,15 @@ export function dashboard(
     </div>`
     : "";
 
-  // ---- guided setup checklist (new users) -----------------------------------
-  // The new user's north star: four real steps with live completion state, one
-  // tap each, and a progress bar. When all four are done it collapses into a
-  // one-time "You're all set" confirmation (setupSeenAt remembers it was seen).
+  // ---- which onboarding stage is this account in? ---------------------------
+  // The dashboard renders ONLY the current stage's one job; later stages are
+  // ABSENT, not collapsed. 1 = no handle · 2 = handle, nothing connected ·
+  // 3 = connected, no clips yet · 4 = active (has clip activity) → lean board.
   const hasUname = Boolean(uname);
   const hasConn = connectedCount > 0;
-  const hasActivity = Boolean(extras.lastCheckedAt) || total > 0;
   const setup = extras.setup ?? { captionTouched: false, hasPosts: total > 0, setupSeen: true, celebrateFirstPost: false };
-  const captionDone = setup.captionTouched;
-  const hasPosts = setup.hasPosts;
-  const doneCount = [hasUname, hasConn, captionDone, hasPosts].filter(Boolean).length;
-  const allDone = doneCount === 4;
-  const setupStep = (done: boolean, n: string, title: string, desc: string, cta: string) => `
-    <li class="setup-step${done ? " is-done" : ""}">
-      <span class="setup-num" aria-hidden="true">${done ? icon("check") : n}</span>
-      <div class="setup-text">
-        <strong><span class="visually-hidden">${done ? "Done: " : "To do: "}</span>${title}</strong>
-        <span>${desc}</span>
-      </div>
-      ${done ? `<span class="setup-done-tag">${icon("check-circle")}Done</span>` : cta}
-    </li>`;
-  const setupHeadline = doneCount === 0
-    ? (mode === "auto" ? "Let's get your clips posting themselves" : "Let's get your clips posting everywhere")
-    : doneCount === 3 ? "One step to go" : `Nice — ${doneCount} of 4 done`;
-  const checklistCard = `
-    <section class="setup-card card" aria-labelledby="setup-title" id="get-started">
-      <div class="setup-head">
-        <p class="eyebrow">Get set up</p>
-        <h2 class="display setup-title" id="setup-title">${setupHeadline}</h2>
-        <p class="setup-sub">Four quick steps, then ${mode === "auto"
-          ? "every clip you publish posts itself."
-          : "posting every clip is one tap after your show."}</p>
-        <div class="setup-progress-row">
-          <div class="setup-progress" role="progressbar" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${doneCount}"
-               aria-label="Setup progress: ${doneCount} of 4 done"><span data-setup-fill style="width:${(doneCount / 4) * 100}%"></span></div>
-          <span class="setup-progress-label">${doneCount} of 4 done</span>
-        </div>
-      </div>
-      <ol class="setup-steps">
-        ${setupStep(hasUname, "1", "Add your Whatnot handle", "So we know whose clips to watch.",
-          `<a class="btn btn-sm btn-primary setup-cta" href="#settings" data-setup-goto="whatnotUsername">Add it</a>`)}
-        ${setupStep(hasConn, "2", "Connect Instagram or TikTok", "Where your clips get posted — one is enough to start.",
-          `<a class="btn btn-sm btn-primary setup-cta" href="#connections">Connect</a>`)}
-        ${setupStep(captionDone, "3", "Pick your caption style", "The words under every post — choose a voice once.",
-          `<a class="btn btn-sm btn-primary setup-cta" href="#captions">Pick a style</a>`)}
-        ${setupStep(hasPosts, "4", "Publish a clip on Whatnot & run your first check", "Tap Clip during your show, publish it after, then check here.",
-          `<button type="button" class="btn btn-sm btn-primary setup-cta" data-howto-clip>Show me how</button>`)}
-      </ol>
-    </section>`;
-  const setupDoneCard = `
-    <section class="setup-done-card card" id="get-started" role="status" data-setup-complete data-csrf="${esc(csrf)}">
-      <span class="setup-done-icon" aria-hidden="true">${icon("check-circle")}</span>
-      <div class="setup-done-text">
-        <h2 class="display">You're all set 🎉</h2>
-        <p>ClipFlow is watching <strong class="mono">@${esc(uname)}</strong>. ${mode === "auto"
-          ? "Publish a clip on your next show and it posts itself — that's the whole job."
-          : "After each show, publish your clip and tap <strong>Check for clips</strong> — we do the rest. Want it fully hands-off? Switch to <strong>Auto</strong>."}</p>
-      </div>
-      <button type="button" class="btn-icon setup-done-close" data-setup-dismiss aria-label="Dismiss">${icon("x")}</button>
-    </section>`;
-  const setupChecklist = allDone ? (setup.setupSeen ? "" : setupDoneCard) : checklistCard;
+  const hasPosts = total > 0 || setup.hasPosts;
+  const stage = !hasUname ? 1 : !hasConn ? 2 : !hasPosts ? 3 : 4;
 
   // One-time first-post celebration — announced politely; confetti (app.js) is
   // motion-guarded and purely decorative.
@@ -1424,158 +1394,8 @@ export function dashboard(
       </div>
     </div>` : "";
 
-  const content = `
-      ${celebrationBanner}
-      ${setupChecklist}
-      ${upgradeBanner}${verifyBanner}
-      <section class="page-head" id="overview">
-        <div class="page-head-main">
-          ${uname ? whatnotAvatar(uname, "pfp-hero") : ""}
-          <div class="page-head-text">
-            <p class="eyebrow">${allDone ? esc(timeGreeting()) : "Welcome"}</p>
-            <h1 class="display page-title">${esc(firstName(acct.email))}</h1>
-            ${watchLine}
-          </div>
-        </div>
-        <div class="page-head-status">
-          ${acct.enabled
-            ? `<span class="pill pill-live" data-active-pill><span class="pulse-dot"></span>Active</span>`
-            : `<span class="pill pill-paused" data-active-pill>${icon("alert")}Paused</span>`}
-          ${modePill}
-          ${trialPill}
-        </div>
-      </section>
-
-      ${uname ? "" : whatnotSection}
-
-      <section class="conn-grid" id="connections" aria-label="Platform connections">
-        ${connectionCard({ platform: "tiktok", configured: status.tiktokConfigured, conn: acct.tiktok, csrf })}
-        ${connectionCard({ platform: "instagram", configured: status.metaConfigured, conn: acct.instagram, csrf })}
-      </section>
-      ${!hasConn ? `<p class="conn-reassure">${icon("lock")} Tapping Connect opens Instagram or TikTok so you can approve — ClipFlow never sees your password.</p>` : ""}
-
-      ${hasUname && hasConn ? `<section class="pipeline card" aria-label="Posting pipeline">
-        <div class="pipe-node">
-          ${uname ? whatnotAvatar(uname, "pfp-pipe") : platformAvatar("instagram", false, "pfp-pipe")}
-          <span class="pipe-label">Whatnot${uname ? `<br><span class="mono">@${esc(uname)}</span>` : `<br><span class="pipe-pending-text">Not set</span>`}</span>
-        </div>
-        <div class="pipe-link" aria-hidden="true"><span class="pipe-dot"></span></div>
-        <div class="pipe-node">
-          <span class="pipe-icon pipe-cf">${logoMark(24)}</span>
-          <span class="pipe-label">ClipFlow</span>
-        </div>
-        <div class="pipe-link" aria-hidden="true"><span class="pipe-dot pipe-dot-late"></span></div>
-        <div class="pipe-node pipe-node-targets">
-          <div class="pipe-target">
-            ${platformAvatar("instagram", Boolean(acct.instagram), "pfp-pipe")}
-            <span class="pipe-target-label">${acct.instagram
-              ? `Instagram<br><span class="mono">${acct.instagram.username ? "@" + esc(acct.instagram.username) : "connected"}</span>`
-              : `Instagram<br><span class="pipe-pending-text">Not connected</span>`}</span>
-          </div>
-          <div class="pipe-target">
-            ${platformAvatar("tiktok", Boolean(acct.tiktok), "pfp-pipe")}
-            <span class="pipe-target-label">${acct.tiktok
-              ? `TikTok<br><span class="mono">${acct.tiktok.username ? "@" + esc(acct.tiktok.username) : "connected"}</span>`
-              : `TikTok<br><span class="pipe-pending-text">Not connected</span>`}</span>
-          </div>
-        </div>
-      </section>` : ""}
-
-      ${hasActivity || hasConn ? `<section class="stats-row" aria-label="Stats">
-        ${extras.stats ? `
-        <div class="stat-card card"><span class="stat-num">${extras.stats.postedWeek}</span><span class="stat-label">Posted this week</span></div>
-        <div class="stat-card card"><span class="stat-num">${extras.stats.pending}</span><span class="stat-label">Pending</span></div>
-        <div class="stat-card card"><span class="stat-num">${extras.stats.failed}</span><span class="stat-label">Failed <a class="stat-link" href="/history?filter=failed">view</a></span></div>` : `
-        <div class="stat-card card"><span class="stat-num">${total}</span><span class="stat-label">Total clips</span></div>
-        <div class="stat-card card"><span class="stat-num">${posted}</span><span class="stat-label">Posted</span></div>
-        <div class="stat-card card"><span class="stat-num">${pending}</span><span class="stat-label">Pending</span></div>`}
-        <div class="stat-card card"><span class="stat-num">${connectedCount}<span class="stat-of">/2</span></span><span class="stat-label">Platforms connected</span></div>
-      </section>` : ""}
-
-      ${uname ? whatnotSection : ""}
-
-      <section class="section-block" id="clips">
-        <div class="section-head section-head-clips">
-          <h2 class="display section-h">Recent clips</h2>
-          <div class="section-head-actions">
-            ${uname ? `<a class="text-link" href="https://www.whatnot.com/user/${esc(encodeURIComponent(uname))}/clips" target="_blank" rel="noopener">View on Whatnot ${icon("external-link")}</a>` : ""}
-            ${checkButton}
-            ${modeSeg}
-          </div>
-        </div>
-        ${checkMicrocopy}
-        ${clipsSection}
-      </section>
-
-      ${hasUname && hasConn ? studioCard : ""}
-
-      <section class="section-block" id="captions">
-        <div class="section-head">
-          <span class="section-h-row"><h2 class="display section-h">Your captions</h2>${helpTip(
-            "captions",
-            "What's this for?",
-            `This is what gets written under every post — pick a voice once and every clip uses it. You can change it any time.`,
-            "/guide#captions")}</span>
-          <span class="saved-flash" id="captions-saved" hidden>Saved ✓</span>
-        </div>
-        ${captionsCard}
-      </section>
-
-      <section class="section-block" id="account">
-        <div class="section-head">
-          <h2 class="display section-h">Account</h2>
-        </div>
-        ${pauseCard}
-        <div class="account-grid">
-          <form method="post" action="/account/password" class="card account-card">
-            <input type="hidden" name="csrf" value="${esc(csrf)}">
-            <h3>Change password</h3>
-            <div class="field">
-              <label class="field-label" for="pw-current">Current password</label>
-              <input class="input" type="password" id="pw-current" name="current" autocomplete="current-password" required>
-            </div>
-            <div class="field">
-              <label class="field-label" for="pw-new">New password</label>
-              <input class="input" type="password" id="pw-new" name="next" minlength="8" autocomplete="new-password" required>
-            </div>
-            <button class="btn btn-secondary" type="submit" data-loading-text="Updating…">Update password</button>
-          </form>
-
-          <form method="post" action="/account/email" class="card account-card">
-            <input type="hidden" name="csrf" value="${esc(csrf)}">
-            <h3>Change email</h3>
-            <p class="field-hint">${acct.emailVerifiedAt
-              ? `Verified as <strong>${esc(acct.email)}</strong>. A new address needs re-verification.`
-              : `Currently <strong>${esc(acct.email)}</strong> — not verified yet.`}</p>
-            <div class="field">
-              <label class="field-label" for="email-new">New email</label>
-              <input class="input" type="email" id="email-new" name="email" autocomplete="email" required placeholder="new@example.com">
-            </div>
-            <div class="account-card-actions">
-              <button class="btn btn-secondary" type="submit" data-loading-text="Sending…">Change email</button>
-              ${acct.emailVerifiedAt ? "" : `<button class="btn btn-ghost" type="submit" formaction="/account/resend-verification">Resend verification</button>`}
-            </div>
-          </form>
-
-          <form method="post" action="/account/delete" class="card account-card account-danger" id="delete-account-form">
-            <input type="hidden" name="csrf" value="${esc(csrf)}">
-            <h3>Delete account</h3>
-            <p class="field-hint">Cancels any subscription, deletes your data, clips, and covers. This cannot be undone.</p>
-            <div class="field">
-              <label class="field-label" for="delete-confirm">Type your email to confirm</label>
-              <input class="input" type="text" id="delete-confirm" name="confirm" autocomplete="off"
-                     inputmode="email" autocapitalize="off" spellcheck="false"
-                     placeholder="${esc(acct.email)}" data-expected-email="${esc(acct.email)}">
-            </div>
-            <button class="btn btn-danger" type="submit"
-                    data-confirm-title="Delete your account?"
-                    data-confirm-body="Your subscription is cancelled and every clip, cover, and setting is permanently removed."
-                    data-confirm-action="Delete forever">Delete my account</button>
-          </form>
-        </div>
-      </section>
-
-      ${total === 0 ? `
+  // The sample-post preview + how-to-clip modals live only in stage 3.
+  const demoTemplate = `
       <template id="demo-post-template">
         <div class="demo" role="dialog" aria-modal="true" aria-labelledby="demo-title">
           <button type="button" class="chooser-close" data-demo-close aria-label="Close preview">${icon("x")}</button>
@@ -1596,7 +1416,7 @@ export function dashboard(
                 <span class="demo-caption-head"><span class="preset-demo-avatar">${esc(initials(acct.email))}</span>@${esc(uname || "yourhandle")}</span>
                 <p>${esc(previewCaption)}</p>
               </div>
-              <figcaption>2 · ClipFlow writes your ${esc(acct.captionPreset === "custom" ? "custom" : acct.captionPreset)} caption</figcaption>
+              <figcaption>2 · ClipFlow writes your caption</figcaption>
             </figure>
             <div class="demo-arrow" aria-hidden="true">${icon("arrow-right")}</div>
             <figure class="demo-stage">
@@ -1613,8 +1433,9 @@ export function dashboard(
           </div>
           <p class="demo-note">${icon("check-circle")} This is a sample built from your settings. Publish a real clip and this flow runs for real on the accounts you've connected.</p>
         </div>
-      </template>
+      </template>`;
 
+  const howtoTemplate = `
       <template id="howto-clip-template">
         <div class="howto" role="dialog" aria-modal="true" aria-labelledby="howto-title">
           <button type="button" class="chooser-close" data-howto-close aria-label="Close">${icon("x")}</button>
@@ -1629,7 +1450,136 @@ export function dashboard(
             <button type="button" class="btn btn-primary" data-howto-done>Got it</button>
           </div>
         </div>
-      </template>` : ""}`;
+      </template>`;
+
+  // "Step N of 4" — the one bit of the mountain a setup-stage user can see.
+  const stageProgress = (n: number) => `
+    <div class="stage-progress" role="progressbar" aria-valuemin="1" aria-valuemax="4" aria-valuenow="${n}" aria-label="Setup — step ${n} of 4">
+      <div class="stage-progress-track"><span style="width:${(n / 4) * 100}%"></span></div>
+      <span class="stage-progress-label">Step ${n} of 4</span>
+    </div>`;
+
+  let content: string;
+
+  if (stage === 1) {
+    // ONE thing: add your Whatnot handle. Nothing else on the screen.
+    content = `
+      <section class="stage-wrap" data-stage="1">
+        ${stageProgress(1)}
+        <div class="stage-card card" id="whatnot-card" data-csrf="${esc(csrf)}">
+          <span class="stage-mark" aria-hidden="true">${logoMark(44)}</span>
+          <p class="eyebrow">Welcome to ClipFlow</p>
+          <h1 class="display stage-title">Let's get you set up</h1>
+          <p class="stage-sub">First, what's your Whatnot handle? That's the profile we'll watch for new clips to post.</p>
+          <div class="stage-field">
+            <div class="input-affix input-affix-lead">
+              <span class="input-lead" aria-hidden="true">@</span>
+              <input class="input input-lg" type="text" id="whatnotUsername" name="whatnotUsername"
+                     value="${esc(uname)}" placeholder="yourhandle" autocomplete="off"
+                     autocapitalize="off" spellcheck="false" data-username-live maxlength="30"
+                     enterkeyhint="go" required>
+            </div>
+            <button type="button" class="btn btn-primary btn-lg btn-block" id="save-username" data-advance data-loading-text="Saving…">Save &amp; continue ${icon("arrow-right")}</button>
+          </div>
+          <p class="stage-hint">Find it at whatnot.com/user/<strong>yourhandle</strong> — the same name your buyers see.</p>
+          <p class="stage-reassure">${icon("lock")}<span>Next you'll connect Instagram or TikTok — we never see your password.</span></p>
+        </div>
+      </section>`;
+  } else if (stage === 2) {
+    // ONE thing: connect a platform. Handle is done; nothing else shows.
+    content = `
+      <section class="stage-wrap" data-stage="2">
+        ${stageProgress(2)}
+        <p class="stage-chip">${icon("check-circle")}<span>Watching <strong class="mono">@${esc(uname)}</strong></span></p>
+        <div class="stage-head">
+          <h1 class="display stage-title">Connect where we post</h1>
+          <p class="stage-sub">Pick where your clips should go — one is enough to start. You can add the other any time.</p>
+        </div>
+        <div class="conn-grid" id="connections" aria-label="Connections">
+          ${connectionCard({ platform: "tiktok", configured: status.tiktokConfigured, conn: acct.tiktok, csrf })}
+          ${connectionCard({ platform: "instagram", configured: status.metaConfigured, conn: acct.instagram, csrf })}
+        </div>
+        <p class="conn-reassure">${icon("lock")}<span>Connecting opens Instagram or TikTok so you can approve — ClipFlow never sees your password.</span></p>
+      </section>`;
+  } else if (stage === 3) {
+    // ONE thing: publish a clip, then check. Connected but nothing posted yet.
+    const targets = [acct.instagram ? "Instagram" : "", acct.tiktok ? "TikTok" : ""].filter(Boolean).join(" and ") || "your accounts";
+    content = `
+      ${upgradeBanner}${verifyBanner}
+      <section class="stage-wrap" data-stage="3">
+        ${stageProgress(3)}
+        <p class="stage-chip is-set">${icon("check-circle")}<span>You're set up — one thing left</span></p>
+        <div class="stage-head">
+          <h1 class="display stage-title">Publish a clip, then check</h1>
+          <p class="stage-sub">Clip during your Whatnot show, publish it after, then tap Check — we'll post it to ${esc(targets)}.</p>
+        </div>
+        <div class="stage-clip card">
+          ${illoClip()}
+          <ol class="mini-steps stage-clip-steps">
+            <li><strong>During your show</strong>, tap <strong>Clip</strong> — Whatnot saves the last 60 seconds.</li>
+            <li><strong>After</strong>, open your clips and tap <strong>Publish</strong>.</li>
+            <li><strong>Here</strong>, tap <strong>Check for clips</strong> — we find it and post it.</li>
+          </ol>
+          <div class="empty-check">
+            ${checkButton}
+            <button type="button" class="btn btn-secondary" data-demo-open>${icon("eye")} Preview a sample post</button>
+          </div>
+          ${checkMicrocopy}
+        </div>
+      </section>
+      ${demoTemplate}${howtoTemplate}`;
+  } else {
+    // Stage 4 — active. The lean full dashboard: status, connections, clips.
+    content = `
+      ${celebrationBanner}
+      ${upgradeBanner}${verifyBanner}
+      <section class="page-head" id="overview">
+        <div class="page-head-main">
+          ${uname ? whatnotAvatar(uname, "pfp-hero") : ""}
+          <div class="page-head-text">
+            <p class="eyebrow">${esc(timeGreeting())}</p>
+            <h1 class="display page-title">${esc(firstName(acct.email))}</h1>
+            ${watchLine}
+          </div>
+        </div>
+        <div class="page-head-status">
+          ${acct.enabled
+            ? `<span class="pill pill-live" data-active-pill><span class="pulse-dot"></span>Active</span>`
+            : `<span class="pill pill-paused" data-active-pill>${icon("alert")}Paused</span>`}
+          ${modePill}
+          ${trialPill}
+        </div>
+      </section>
+
+      <section class="conn-grid conn-grid-compact" id="connections" aria-label="Connections">
+        ${connectionCard({ platform: "tiktok", configured: status.tiktokConfigured, conn: acct.tiktok, csrf })}
+        ${connectionCard({ platform: "instagram", configured: status.metaConfigured, conn: acct.instagram, csrf })}
+      </section>
+
+      <section class="stats-row" aria-label="Stats">
+        ${extras.stats ? `
+        <div class="stat-card card"><span class="stat-num">${extras.stats.postedWeek}</span><span class="stat-label">Posted this week</span></div>
+        <div class="stat-card card"><span class="stat-num">${extras.stats.pending}</span><span class="stat-label">Pending</span></div>
+        <div class="stat-card card"><span class="stat-num">${extras.stats.failed}</span><span class="stat-label">Failed <a class="stat-link" href="/history?filter=failed">view</a></span></div>` : `
+        <div class="stat-card card"><span class="stat-num">${total}</span><span class="stat-label">Total clips</span></div>
+        <div class="stat-card card"><span class="stat-num">${posted}</span><span class="stat-label">Posted</span></div>
+        <div class="stat-card card"><span class="stat-num">${pending}</span><span class="stat-label">Pending</span></div>`}
+        <div class="stat-card card"><span class="stat-num">${connectedCount}<span class="stat-of">/2</span></span><span class="stat-label">Connected</span></div>
+      </section>
+
+      <section class="section-block" id="clips">
+        <div class="section-head section-head-clips">
+          <h2 class="display section-h">Recent clips</h2>
+          <div class="section-head-actions">
+            ${uname ? `<a class="text-link" href="https://www.whatnot.com/user/${esc(encodeURIComponent(uname))}/clips" target="_blank" rel="noopener">View on Whatnot ${icon("external-link")}</a>` : ""}
+            ${checkButton}
+            ${modeSeg}
+          </div>
+        </div>
+        ${checkMicrocopy}
+        ${clipsSection}
+      </section>`;
+  }
 
   const flash = {
     connected: query.connected ?? null,
@@ -1642,8 +1592,67 @@ export function dashboard(
   };
 
   return layout("Dashboard — ClipFlow", appShell(acct, "overview", content, flash, {
-    hasUname, hasConn, captionDone, hasPosts,
-  }));
+    hasUname, hasConn, captionDone: Boolean(acct.captionTouchedAt), hasPosts,
+  }, stage === 4));
+}
+
+// ---------------------------------------------------------------------------
+// settings — /settings (handle · captions · account). Kept off the dashboard
+// so a new user never has to think about any of it; captions default silently.
+// ---------------------------------------------------------------------------
+
+export function settingsPage(acct: Account, opts: { csrf: string; active: boolean }): string {
+  const csrf = opts.csrf;
+  const presetLabel = acct.captionPreset === "custom"
+    ? "your own words"
+    : `the <strong>${esc(acct.captionPreset.charAt(0).toUpperCase() + acct.captionPreset.slice(1))}</strong> style`;
+
+  const content = `
+      <section class="page-head">
+        <div>
+          <p class="eyebrow">Settings</p>
+          <h1 class="display page-title">Settings</h1>
+          <p class="watch-line">Everything here already has a sensible default — change it only if you want to.</p>
+        </div>
+      </section>
+
+      <section class="section-block" id="whatnot">
+        <div class="section-head">
+          <h2 class="display section-h">Your Whatnot</h2>
+          <span class="saved-flash" id="whatnot-saved" hidden>Saved ✓</span>
+        </div>
+        ${whatnotFieldCard(acct, csrf)}
+      </section>
+
+      <section class="section-block" id="captions">
+        <div class="section-head">
+          <h2 class="display section-h">Captions</h2>
+          <span class="saved-flash" id="captions-saved" hidden>Saved ✓</span>
+        </div>
+        <div class="card settings-card">
+          <div class="settings-summary">
+            <div>
+              <strong>Your captions write themselves.</strong>
+              <span class="field-hint">Every post uses ${presetLabel} with your hashtags. You don't have to touch this.</span>
+            </div>
+          </div>
+          <details class="customize-fold">
+            <summary class="customize-summary">${icon("wand")}<span>Customize captions</span>${icon("chevron-down", "faq-caret")}</summary>
+            <div class="customize-body">
+              ${captionsEditor(acct, csrf)}
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="section-block" id="account">
+        <div class="section-head">
+          <h2 class="display section-h">Account</h2>
+        </div>
+        ${accountCards(acct, csrf)}
+      </section>`;
+
+  return layout("Settings — ClipFlow", appShell(acct, "settings", content, undefined, null, opts.active));
 }
 
 // ---------------------------------------------------------------------------
@@ -1654,8 +1663,9 @@ export function thumbnailsPage(
   acct: Account,
   thumbs: ThumbRecord[],
   clips: ClipRow[],
-  opts: { configured: boolean; csrf: string; styles: Record<ThumbStyle, StyleSpec>; left: number; perDay: number }
+  opts: { configured: boolean; csrf: string; styles: Record<ThumbStyle, StyleSpec>; left: number; perDay: number; active?: boolean }
 ): string {
+  const active = opts.active ?? true;
   const styleKeys = Object.keys(opts.styles) as ThumbStyle[];
   const defaultSubject = deriveSubject(clips[0]?.title ?? "") || "squishy toys";
 
@@ -1682,10 +1692,10 @@ export function thumbnailsPage(
       </section>`;
     return layout("Show Covers — ClipFlow", appShell(acct, "thumbnails",
       `<section class="page-head"><div>
-        <p class="eyebrow">Show Covers</p>
+        <p class="eyebrow">Optional · Show Covers</p>
         <h1 class="display page-title">Covers that pack your next show</h1>
         <p class="watch-line">Designed from your real products — bold type, one loud colour, perfect spelling.</p>
-      </div></section>${locked}`));
+      </div></section>${locked}`, undefined, null, active));
   }
 
   const clipOptions = clips.slice(0, 20).map((c) =>
@@ -1842,9 +1852,9 @@ export function thumbnailsPage(
   const content = `
       <section class="page-head">
         <div>
-          <p class="eyebrow">Show Covers</p>
+          <p class="eyebrow">Optional · Show Covers</p>
           <h1 class="display page-title">Covers that pack your next show</h1>
-          <p class="watch-line">Built on the winning Whatnot formula — a bold text wall, your real products collaged in, flooded in one loud colour. Perfect spelling, every time.</p>
+          <p class="watch-line">A nice extra, not part of getting posting — make a cover for your next show whenever you want one. Bold text wall, your real products collaged in, one loud colour. Perfect spelling, every time.</p>
         </div>
       </section>
       <div class="studio-grid">
@@ -1857,7 +1867,7 @@ export function thumbnailsPage(
       </section>
       ${jsonIsland("cf-thumbstudio", clientCfg)}`;
 
-  return layout("Show Covers — ClipFlow", appShell(acct, "thumbnails", content));
+  return layout("Show Covers — ClipFlow", appShell(acct, "thumbnails", content, undefined, null, active));
 }
 
 /** URL-safe slug for download filenames. */
@@ -1869,7 +1879,7 @@ function slugify(s: string): string {
 // guide — /guide
 // ---------------------------------------------------------------------------
 
-export function guidePage(acct: Account): string {
+export function guidePage(acct: Account, active = true): string {
   const content = `
       <section class="page-head">
         <div>
@@ -1904,18 +1914,23 @@ export function guidePage(acct: Account): string {
         ${faqAccordion()}
       </section>
       <section class="section-block" id="gemini">
-        <div class="section-head"><h2 class="display section-h">Show Covers setup</h2></div>
+        <div class="section-head"><h2 class="display section-h">Show Covers</h2></div>
         <div class="card guide-gemini">
-          <p>The Show Covers studio needs one thing switched on by whoever runs your ClipFlow — a free Google Gemini key. If that's you:</p>
-          <ol class="mini-steps">
-            <li>Create a free API key at <strong>aistudio.google.com</strong> (API keys section).</li>
-            <li>Paste it into <code>.env</code> as <code>GEMINI_API_KEY=…</code></li>
-            <li>Restart the app — the studio unlocks instantly. <code>npm run doctor</code> confirms it loaded.</li>
-          </ol>
+          <p>Show Covers lets you design a bold cover for your next show — your real products, big type, one loud colour — in a few taps. If the studio's still locked, it just needs switching on by whoever runs your ClipFlow. Ask them to flip it on, or email ${mail()} and we'll help.</p>
+          <details class="mini-accordion">
+            <summary>Run ClipFlow yourself? Switch it on ${icon("chevron-down", "faq-caret")}</summary>
+            <div class="faq-a-wrap"><div class="faq-a">
+              <ol class="mini-steps">
+                <li>Grab a free Google Gemini API key at <strong>aistudio.google.com</strong>.</li>
+                <li>Add it to your <code>.env</code> as <code>GEMINI_API_KEY</code>.</li>
+                <li>Restart — the studio unlocks. <code>npm run doctor</code> confirms it loaded.</li>
+              </ol>
+            </div></div>
+          </details>
         </div>
       </section>`;
 
-  return layout("Guide — ClipFlow", appShell(acct, "guide", content));
+  return layout("Guide — ClipFlow", appShell(acct, "guide", content, undefined, null, active));
 }
 
 // ---------------------------------------------------------------------------
@@ -1937,7 +1952,7 @@ export interface StatusInfo {
   geminiConfigured: boolean;
 }
 
-export function statusPage(acct: Account, info: StatusInfo): string {
+export function statusPage(acct: Account, info: StatusInfo, active = true): string {
   const row = (label: string, value: string, ok?: boolean) => `
     <div class="status-row">
       <dt>${esc(label)}</dt>
@@ -1969,7 +1984,7 @@ export function statusPage(acct: Account, info: StatusInfo): string {
         </dl>
       </section>`;
 
-  return layout("Status — ClipFlow", appShell(acct, "status", content));
+  return layout("Status — ClipFlow", appShell(acct, "status", content, undefined, null, active));
 }
 
 // ---------------------------------------------------------------------------
@@ -2115,7 +2130,7 @@ export interface BillingView {
   trialDays: number;
 }
 
-export function billingPage(acct: Account, v: BillingView): string {
+export function billingPage(acct: Account, v: BillingView, active = true): string {
   const portalForm = (label: string, primary = false) => `
       <form method="post" action="/billing/portal"><input type="hidden" name="csrf" value="${esc(v.csrf)}">
         <button class="btn ${primary ? "btn-primary" : "btn-secondary"}" type="submit" data-loading-text="Opening Stripe…">${label} ${icon("external-link")}</button>
@@ -2200,7 +2215,7 @@ export function billingPage(acct: Account, v: BillingView): string {
         </div>
       </section>`;
 
-  return layout("Billing — ClipFlow", appShell(acct, "billing", content));
+  return layout("Billing — ClipFlow", appShell(acct, "billing", content, undefined, null, active));
 }
 
 // ---------------------------------------------------------------------------
@@ -2212,7 +2227,7 @@ export type HistoryFilter = "all" | "posted" | "failed";
 export function historyPage(
   acct: Account,
   posts: PostRow[],
-  opts: { csrf: string; filter: HistoryFilter; query?: { retried?: string; error?: string } }
+  opts: { csrf: string; filter: HistoryFilter; query?: { retried?: string; error?: string }; active?: boolean }
 ): string {
   const f = opts.filter;
   const filtered = posts.filter((p) =>
@@ -2277,7 +2292,7 @@ export function historyPage(
       </section>`;
 
   const flash = { retried: opts.query?.retried ?? null, error: opts.query?.error ?? null };
-  return layout("History — ClipFlow", appShell(acct, "history", content, flash));
+  return layout("History — ClipFlow", appShell(acct, "history", content, flash, null, opts.active ?? true));
 }
 
 // ---------------------------------------------------------------------------

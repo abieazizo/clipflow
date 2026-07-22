@@ -55,6 +55,7 @@ import {
   layout, landingPage, authPage, dashboard, welcomePage, guidePage,
   thumbnailsPage, statusPage, errorPage, privacyPage, termsPage,
   billingPage, historyPage, adminPage, forgotPage, resetPage, goodbyePage,
+  settingsPage,
   type HistoryFilter,
 } from "./views.js";
 
@@ -280,6 +281,14 @@ function dashboardExtras(acct: Account) {
       celebrateFirstPost: totals.posted > 0 && !acct.firstPostCelebratedAt,
     },
   }));
+}
+
+/** Full app-nav (Clips + Covers tabs) unlocks only once a seller is actually
+ *  posting — a handle, a connection, and at least one clip in the pipeline.
+ *  Before that, nav stays minimal (Home + Guide) so nothing competes with the
+ *  current setup step. Mirrors the dashboard's stage-4 condition. */
+function navActive(acct: Account): boolean {
+  return Boolean(acct.whatnotUsername) && Boolean(acct.instagram || acct.tiktok) && postTotals(acct.id).total > 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -546,6 +555,13 @@ app.get("/dashboard", async (req, res) => {
   ));
 });
 
+app.get("/settings", (req, res) => {
+  const acct = currentAccount(req);
+  if (!acct) return res.redirect("/login");
+  if (isFreshAccount(acct)) return res.redirect("/welcome");
+  res.send(settingsPage(acct, { csrf: csrfToken(acct.id), active: navActive(acct) }));
+});
+
 app.post("/settings", async (req, res) => {
   const acct = currentAccount(req);
   if (!acct) return res.redirect("/login");
@@ -740,7 +756,7 @@ app.get("/billing", (req, res) => {
     state: accountState(acct, settings.stripeConfigured),
     daysLeft: trialDaysLeft(acct),
     trialDays: TRIAL_DAYS,
-  }));
+  }, navActive(acct)));
 });
 
 app.post("/billing/checkout", async (req, res) => {
@@ -775,6 +791,7 @@ app.get("/history", (req, res) => {
     csrf: csrfToken(acct.id),
     filter,
     query: { retried: q.retried, error: q.error },
+    active: navActive(acct),
   }));
 });
 
@@ -799,7 +816,7 @@ app.post("/history/retry/:id", async (req, res) => {
 app.get("/guide", (req, res) => {
   const acct = currentAccount(req);
   if (!acct) return res.redirect("/login");
-  res.send(guidePage(acct));
+  res.send(guidePage(acct, navActive(acct)));
 });
 
 app.get("/status", (req, res) => {
@@ -810,7 +827,7 @@ app.get("/status", (req, res) => {
     engine: engineStatus(),
     zernioConfigured: settings.zernioConfigured,
     geminiConfigured: settings.geminiConfigured,
-  }));
+  }, navActive(acct)));
 });
 
 const DAY_MS = 24 * 3600_000;
@@ -836,6 +853,7 @@ app.get("/thumbnails", async (req, res) => {
     styles: gemini.STYLE_SPECS,
     left,
     perDay: settings.thumbsPerDay,
+    active: navActive(acct),
   }));
 });
 

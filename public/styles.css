@@ -1325,6 +1325,13 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
   background: var(--bg-2);
 }
 .setup-step.is-done { opacity: .62; }
+/* the single active step reads as "you are here": accent edge + lifted surface */
+.setup-step.is-current {
+  border-color: var(--accent);
+  background: linear-gradient(162deg, rgba(255,90,60,.08), var(--bg-2) 60%);
+  box-shadow: 0 0 0 1px rgba(255,90,60,.22);
+}
+.setup-step.is-current .setup-num { border-color: var(--accent); color: var(--text); }
 .setup-num {
   flex: none; width: 34px; height: 34px; border-radius: var(--r-full);
   display: flex; align-items: center; justify-content: center;
@@ -1343,6 +1350,57 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
   .setup-text { flex-basis: calc(100% - 34px - var(--sp-4)); }
   .setup-cta { flex-basis: 100%; width: 100%; margin-top: var(--sp-3); justify-content: center; }
 }
+
+/* ==========================================================================
+   staged onboarding — the dashboard shows ONLY the current stage's one job.
+   A narrow centered column keeps the eye on the single next action; later
+   stages aren't collapsed, they're absent.
+   ========================================================================== */
+.stage-wrap { max-width: 560px; margin-inline: auto; display: flex; flex-direction: column; gap: var(--sp-6); }
+.stage-progress { display: flex; align-items: center; gap: var(--sp-4); }
+.stage-progress-track { flex: 1; height: 6px; background: var(--bg-3); border-radius: var(--r-full); overflow: hidden; }
+.stage-progress-track span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: var(--r-full); transition: width var(--dur-3) var(--ease); }
+.stage-progress-label { flex: none; font-size: var(--fs-1); font-weight: 700; letter-spacing: .04em; color: var(--text-muted); }
+
+.stage-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--sp-4); padding: var(--sp-9) var(--sp-7); border-color: var(--border-strong); }
+.stage-card .eyebrow { margin-bottom: 0; }
+.stage-mark { display: inline-flex; margin-bottom: var(--sp-2); }
+.stage-title { font-size: var(--fs-7); }
+.stage-sub { color: var(--text-muted); font-size: var(--fs-3); max-width: 42ch; }
+.stage-field { width: 100%; display: flex; flex-direction: column; gap: var(--sp-4); margin-top: var(--sp-3); }
+.stage-field .input-affix { width: 100%; }
+.stage-hint { font-size: var(--fs-1); color: var(--text-faint); }
+.stage-reassure { display: flex; align-items: center; justify-content: center; gap: var(--sp-3); margin-top: var(--sp-2); font-size: var(--fs-2); color: var(--text-muted); }
+.stage-reassure .icon { flex: none; width: 16px; height: 16px; color: var(--text-faint); }
+
+.stage-chip { align-self: flex-start; display: inline-flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-4); background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r-full); font-size: var(--fs-2); color: var(--text-muted); }
+.stage-chip .icon { flex: none; width: 16px; height: 16px; color: var(--text-faint); }
+.stage-chip .mono { color: var(--text); }
+.stage-chip.is-set { color: var(--success); border-color: rgba(34, 197, 94, .3); }
+.stage-chip.is-set .icon { color: var(--success); }
+.stage-head { display: flex; flex-direction: column; gap: var(--sp-2); }
+.stage-head .stage-title { font-size: var(--fs-6); }
+.stage-head .stage-sub { max-width: 46ch; }
+
+.stage-clip { display: flex; flex-direction: column; align-items: center; gap: var(--sp-5); padding: var(--sp-7); text-align: center; }
+.stage-clip .phone { --ph-w: 150px; }
+.stage-clip-steps { text-align: left; align-self: stretch; max-width: 420px; margin-inline: auto; }
+.stage-clip .empty-check { margin-top: var(--sp-1); }
+
+/* stage 4 — connections shown compact once the seller is active */
+.conn-grid-compact { gap: var(--sp-4); }
+
+/* settings — calm by default; the caption editor hides behind "Customize" */
+.settings-summary { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); }
+.settings-summary strong { display: block; font-size: var(--fs-3); }
+.settings-summary .field-hint { margin-top: var(--sp-1); }
+.customize-fold { margin-top: var(--sp-5); border-top: 1px solid var(--border); padding-top: var(--sp-4); }
+.customize-summary { display: flex; width: 100%; align-items: center; gap: var(--sp-3); cursor: pointer; font-weight: 700; font-size: var(--fs-2); color: var(--text); min-height: 44px; list-style: none; }
+.customize-summary::-webkit-details-marker { display: none; }
+.customize-summary > .icon:first-child { color: var(--cool); }
+.customize-summary .faq-caret { margin-left: auto; transition: transform var(--dur-2) var(--ease); }
+.customize-fold[open] .customize-summary .faq-caret { transform: rotate(180deg); }
+.customize-body { margin-top: var(--sp-5); }
 
 .conn-grid {
   display: grid;
@@ -1512,8 +1570,9 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 .mode-info:hover .mode-tip, .mode-info:focus-visible .mode-tip { opacity: 1; visibility: visible; }
 
 .empty-check { margin: var(--sp-2) 0 var(--sp-3); }
-.wiz-mode-note { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-5); padding: var(--sp-4) var(--sp-5); background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r-md); font-size: var(--fs-2); color: var(--text-muted); }
-.wiz-mode-note .icon { width: 16px; height: 16px; flex: none; color: var(--text-faint); }
+.wiz-mode-note { display: flex; align-items: flex-start; gap: var(--sp-3); margin-top: var(--sp-5); padding: var(--sp-4) var(--sp-5); background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r-md); font-size: var(--fs-2); line-height: 1.5; color: var(--text-muted); }
+.wiz-mode-note .icon { width: 16px; height: 16px; flex: none; margin-top: 3px; color: var(--text-faint); }
+.wiz-mode-note strong { color: var(--text); }
 
 @media (max-width: 560px) {
   .section-head-actions { width: 100%; }
@@ -2799,6 +2858,10 @@ h1, h2, h3, h4, .section-h, .modal-title, .hero-title, .page-title { text-wrap: 
 @media (hover: hover) {
   .help-launcher:active { transform: scale(.97); }
 }
+/* Only one floating affordance at a time: when a bottom sheet, the Menu, or the
+   help panel itself is open (body.sheet-open, set by app.js on mobile), the
+   launcher steps aside so it never sits on top of the sheet's content. */
+body.sheet-open .help-launcher { opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(8px); }
 
 .help-panel {
   position: fixed;
@@ -3258,7 +3321,9 @@ body.sheet-open { overflow: hidden; }
     box-shadow: none;
     padding: calc(var(--sp-5) + env(safe-area-inset-top)) var(--sp-5) 0;
   }
-  .wiz-step { flex: 1; }
+  /* pad the bottom so the last line of a step (e.g. the "never sees your
+     password" trust line on Connect) clears the sticky footer at rest */
+  .wiz-step { flex: 1; padding-bottom: var(--sp-8); }
   .wiz-foot {
     position: sticky;
     bottom: 0;

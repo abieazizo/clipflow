@@ -809,6 +809,20 @@
       tag.innerHTML = ICONS.success + "Done";
       cta.replaceWith(tag);
     }
+    // advance the single "you are here" highlight + loud CTA to the next pending
+    // step, so momentum reads forward and exactly one action stays dominant.
+    step.classList.remove("is-current");
+    var next = card.querySelector(".setup-step:not(.is-done)");
+    if (next) {
+      next.classList.add("is-current");
+      var nextVh = next.querySelector(".visually-hidden");
+      if (nextVh) nextVh.textContent = "Next up: ";
+      var nextCta = next.querySelector(".setup-cta");
+      if (nextCta && nextCta.classList.contains("btn-secondary")) {
+        nextCta.classList.remove("btn-secondary");
+        nextCta.classList.add("btn-primary");
+      }
+    }
     var done = card.querySelectorAll(".setup-step.is-done").length;
     var fill = card.querySelector("[data-setup-fill]");
     if (fill) fill.style.width = (done / steps.length) * 100 + "%";
@@ -1803,14 +1817,21 @@
     usernameInput.addEventListener("input", updatePreview);
     saveUsernameBtn.addEventListener("click", function () {
       saveUsernameBtn.classList.add("is-loading"); saveUsernameBtn.disabled = true;
+      var advance = saveUsernameBtn.hasAttribute("data-advance");
       postSettings({ onlyUsername: "1", whatnotUsername: usernameInput.value })
         .then(function (json) {
-          saveUsernameBtn.classList.remove("is-loading"); saveUsernameBtn.disabled = false;
           if (json.ok) {
+            // Stage-1 setup: the handle is saved, so advance to the next stage
+            // (connect) by reloading the staged dashboard. Keep the button busy
+            // through the reload so it never flashes back to idle.
+            if (advance && usernameInput.value.trim()) { window.location.assign("/dashboard"); return; }
+            saveUsernameBtn.classList.remove("is-loading"); saveUsernameBtn.disabled = false;
             flashSaved("whatnot-saved");
             if (usernameInput.value.trim()) markSetupStep(1);
+          } else {
+            saveUsernameBtn.classList.remove("is-loading"); saveUsernameBtn.disabled = false;
+            toast(json.error || "That username doesn't look right.", "error");
           }
-          else toast(json.error || "That username doesn't look right.", "error");
         })
         .catch(function () { saveUsernameBtn.classList.remove("is-loading"); saveUsernameBtn.disabled = false; toast("Couldn't save — check your connection.", "error"); });
     });
