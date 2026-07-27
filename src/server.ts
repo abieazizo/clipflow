@@ -38,7 +38,7 @@ import {
   type Account,
 } from "./db.js";
 import { recentClips, startEngine, clipsDir, engineStatus, checkAccount } from "./engine.js";
-import { getProfile as getWhatnotProfile, getBinary as getWhatnotBinary } from "./whatnot.js";
+import { getProfile as getWhatnotProfile, getBinary as getWhatnotBinary, listClipIds, getClipMeta } from "./whatnot.js";
 import * as zernio from "./zernio.js";
 import * as gemini from "./gemini.js";
 import * as billing from "./billing.js";
@@ -304,6 +304,69 @@ app.get("/privacy", (_req, res) => res.send(privacyPage()));
 app.get("/terms", (_req, res) => res.send(termsPage()));
 app.get("/healthz", (_req, res) => res.status(200).type("text/plain").send("ok"));
 
+// Friendly aliases for the app tabs (thin redirects, no logic). The Studio
+// tab's canonical URL is /studio — registered on the real handler below.
+app.get("/home", (_req, res) => res.redirect("/dashboard"));
+app.get("/clips", (_req, res) => res.redirect("/history"));
+
+// ---------------------------------------------------------------------------
+// Public handle preview — the landing hook + wizard step 2. Read-only reuse of
+// the proven whatnot.ts fetchers: profile, latest clip titles, thumbnails
+// proxied as data URIs (CSP img-src is 'self' data:). Cached hard + rate
+// limited so the public form can't be used to hammer Whatnot.
+// ---------------------------------------------------------------------------
+
+const handleClipsCache = new Map<string, { at: number; body: unknown }>();
+const HANDLE_CLIPS_TTL_MS = 10 * 60_000;
+
+app.get("/api/handle-clips", async (req, res) => {
+  const uname = cleanUsername(req.query.u);
+  if (!uname) return res.json({ ok: true, exists: false });
+
+  const cached = handleClipsCache.get(uname);
+  if (cached && Date.now() - cached.at < HANDLE_CLIPS_TTL_MS) return res.json(cached.body);
+
+  if (!rateLimit(`handleclips:${ip(req)}`, 6)) {
+    return res.status(429).json({ ok: false, error: "Checking too fast — give it a beat." });
+  }
+
+  try {
+    const profile = await getWhatnotProfile(uname);
+    if (!profile.exists) {
+      const body = { ok: true, exists: false };
+      handleClipsCache.set(uname, { at: Date.now(), body });
+      return res.json(body);
+    }
+    let avatar: string | null = null;
+    if (profile.avatarUrl) {
+      try {
+        const img = await getWhatnotBinary(profile.avatarUrl);
+        avatar = `data:${img.contentType};base64,${img.buf.toString("base64")}`;
+      } catch { /* profile is real even if the avatar won't load */ }
+    }
+    const ids = (await listClipIds(uname).catch(() => [] as string[])).slice(0, 3);
+    const clips: Array<{ title: string | null; thumb: string | null }> = [];
+    for (const id of ids) {
+      try {
+        const meta = await getClipMeta(id);
+        let thumb: string | null = null;
+        if (meta.thumbnailUrl) {
+          try {
+            const img = await getWhatnotBinary(meta.thumbnailUrl);
+            thumb = `data:${img.contentType};base64,${img.buf.toString("base64")}`;
+          } catch { /* title still counts as proof */ }
+        }
+        clips.push({ title: meta.title, thumb });
+      } catch { /* one broken clip page shouldn't sink the preview */ }
+    }
+    const body = { ok: true, exists: true, displayName: profile.displayName, avatar, clips };
+    handleClipsCache.set(uname, { at: Date.now(), body });
+    res.json(body);
+  } catch {
+    res.status(200).json({ ok: false, error: "Couldn't reach Whatnot to check." });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Auth + verification + reset
 // ---------------------------------------------------------------------------
@@ -319,7 +382,9 @@ app.post("/signup", async (req, res) => {
   }
   const email = String(req.body.email ?? "").trim();
   const password = String(req.body.password ?? "");
-  const password2 = String(req.body.password2 ?? "");
+  // The signup form asks for ONE password field (trust through restraint); a
+  // repeat field is accepted-and-checked only if a client sends it.
+  const password2 = String(req.body.password2 ?? password);
   if (!EMAIL_RE.test(email) || email.length > 254) {
     return res.status(400).send(authPage("signup", "That doesn't look like an email address.", email));
   }
@@ -516,9 +581,9 @@ app.post("/welcome/username", async (req, res) => {
   if (!acct) return res.redirect("/login");
   if (!csrfOk(acct, req.body.csrf)) return res.status(403).send(errorPage(500, "csrf"));
   const uname = cleanUsername(req.body.whatnotUsername);
-  if (uname === null || uname === "") return res.redirect("/welcome?step=2&error=bad_username");
+  if (uname === null || uname === "") return res.redirect("/welcome?step=1&error=bad_username");
   await updateAccount(acct.id, { whatnotUsername: uname });
-  res.redirect("/welcome?step=3");
+  res.redirect("/welcome?step=2");
 });
 
 app.post("/welcome/complete", async (req, res) => {
@@ -841,7 +906,7 @@ async function thumbAllowance(acct: Account): Promise<{ left: number; resetHrs: 
   return { left, resetHrs };
 }
 
-app.get("/thumbnails", async (req, res) => {
+app.get(["/studio", "/thumbnails"], async (req, res) => {
   const acct = currentAccount(req);
   if (!acct) return res.redirect("/login");
   const thumbs = await listKept(acct.id);
@@ -1201,7 +1266,7 @@ app.get("/connect/:platform", async (req, res) => {
   const platform = asPlatform(req.params.platform);
   if (!platform) return res.redirect("/dashboard");
   const fromWelcome = req.query.from === "welcome";
-  const back = fromWelcome ? "/welcome?step=3" : "/dashboard";
+  const back = fromWelcome ? (platform === "tiktok" ? "/welcome?step=4" : "/welcome?step=3") : "/dashboard";
   const sep = back.includes("?") ? "&" : "?";
   if (!settings.zernioConfigured) return res.redirect(`${back}${sep}error=zernio_not_configured`);
   if (!rateLimit(`connect:${acct.id}`, 10)) return res.redirect(`${back}${sep}error=slow_down`);
@@ -1236,7 +1301,7 @@ app.get("/connect/:platform/callback", async (req, res) => {
   const platform = asPlatform(req.params.platform);
   if (!platform) return res.redirect("/dashboard");
   const fromWelcome = req.query.from === "welcome";
-  const back = fromWelcome ? "/welcome?step=3" : "/dashboard";
+  const back = fromWelcome ? (platform === "tiktok" ? "/welcome?step=4" : "/welcome?step=3") : "/dashboard";
   const sep = back.includes("?") ? "&" : "?";
   if (!acct.zernioProfileId) return res.redirect(`${back}${sep}error=connect_failed`);
 

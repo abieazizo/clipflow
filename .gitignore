@@ -5,3 +5,9 @@ dist/
 users.json
 .env
 *.log
+
+# scratch / dev artifacts (not shipped)
+screenshots/
+html-export/
+export-html.mts
+og-new.png
