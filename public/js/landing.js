@@ -134,7 +134,7 @@
         panel.appendChild(prof);
 
         if (!r.clips || !r.clips.length) {
-          panel.appendChild(el("p", "sub", "No public clips found yet. Clip once on your next live, then try me."));
+          panel.appendChild(el("p", "sub", "No public clips found. If you’ve clipped before, make them public on Whatnot — then try me."));
           result.appendChild(panel);
           requestAnimationFrame(function () { panel.classList.add("is-on"); });
           return;

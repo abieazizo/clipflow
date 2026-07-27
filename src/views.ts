@@ -607,7 +607,8 @@ export function welcomePage(
       <div data-proof-empty hidden>
         <h1 class="display">Found you<span class="period">.</span></h1>
         <div class="wiz-found" data-proof-profile-empty></div>
-        <p class="wiz-sub" style="margin-top:var(--s-4)">No public clips yet. Clip once on your next live &mdash; ClipFlow takes it from there.</p>
+        <p class="wiz-sub" style="margin-top:var(--s-4)">No <strong>public</strong> clips yet. We can only see clips you&rsquo;ve made public on Whatnot.</p>
+        <p class="wiz-sub" style="margin-top:var(--s-2)">Already clipped? Open your Whatnot clips and make them public &mdash; or publish one on your next live.</p>
       </div>
       <div data-proof-notfound hidden>
         <h1 class="display">That username isn&rsquo;t on Whatnot<span class="period">.</span></h1>
@@ -699,7 +700,7 @@ export function welcomePage(
     content = `
     <section class="wiz-step" data-rise style="--i:0">
       <h1 class="display">You&rsquo;re set<span class="period">.</span></h1>
-      <p class="wiz-sub">Go live like normal. Clip like normal. That&rsquo;s the whole job.</p>
+      <p class="wiz-sub">Go live like normal. Clip like normal &mdash; and make your clips <strong>public</strong>. That&rsquo;s the whole job.</p>
       <div class="wiz-body">
         ${receipt({
           head: ["ClipFlow", "Ready"],
@@ -898,7 +899,7 @@ export function dashboard(
         label: "Add a card",
         sub: cardDone ? "Free week running" : "Starts your free week — nothing charges today",
       }] : []),
-      { state: "next" as StepState, label: "Clip on your next live", sub: "It posts itself from there" },
+      { state: "next" as StepState, label: "Clip on your next live", sub: "Make it public — it posts itself from there" },
     ];
     let n = 0;
     const stepRows = steps.map((st) => {
@@ -941,7 +942,7 @@ export function dashboard(
           ${extras.lastCheckedAt ? `<p class="since mono">checked <span data-check-tick data-ts="${esc(extras.lastCheckedAt)}">${esc(relShort(extras.lastCheckedAt))}</span> ago</p>` : ""}
         </div>
       </div>
-      ${hasReceipts ? "" : `<p class="status-line">Clip during your live. It&rsquo;ll show up here.</p>`}
+      ${hasReceipts ? "" : `<p class="status-line">Clip during your live and make it <strong>public</strong> &mdash; it&rsquo;ll show up here.</p>`}
     </section>
     <p data-rise style="--i:1;text-align:center"><button class="btn-text" type="button" data-check-now data-loading-text="Checking&hellip;">Check for clips now</button></p>
     ${failed > 0 ? `<p class="fail-row" data-rise style="--i:2">${failed} post${failed === 1 ? "" : "s"} didn&rsquo;t go out &mdash; <a href="/history?filter=failed">Fix in Clips</a></p>` : ""}`;
@@ -957,7 +958,7 @@ export function dashboard(
       <div class="empty">
         <div class="empty-art">${icon("receipt")}</div>
         <h3>No clips yet<span class="period">.</span></h3>
-        <p>Your next live changes that.</p>
+        <p>Clip on your next live and make it public &mdash; we can only see public clips.</p>
       </div>
     </section>` : "";
 
@@ -1046,7 +1047,7 @@ export function historyPage(
     : `<div class="empty">
         <div class="empty-art">${icon("receipt")}</div>
         <h3>No clips yet<span class="period">.</span></h3>
-        <p>Your next live changes that.</p>
+        <p>Clip on your next live and make it public &mdash; we can only see public clips.</p>
       </div>`;
 
   const sheets = posts.map((p, i) => {
@@ -1499,7 +1500,7 @@ export function guidePage(acct: Account, active = true): string {
       </div>
     </div>
     <div class="faq-list">
-      <div class="faq-item"><p class="q">A clip didn&rsquo;t show up?</p><p class="a">Make sure the clip is <strong>published</strong> on Whatnot, not just saved. Then tap Check on Home.</p></div>
+      <div class="faq-item"><p class="q">A clip didn&rsquo;t show up?</p><p class="a">Make sure the clip is <strong>public</strong> on Whatnot &mdash; private or saved-only clips are invisible to ClipFlow. Then tap Check on Home.</p></div>
       <div class="faq-item"><p class="q">Will this get me banned?</p><p class="a">No. Posting goes through Instagram&rsquo;s and TikTok&rsquo;s official tools &mdash; the route brands use.</p></div>
       <div class="faq-item"><p class="q">Something else?</p><p class="a"><a href="mailto:${CONTACT_EMAIL}">Email ${esc(SELLER_NAME)}</a>. A real person answers.</p></div>
     </div>`;
