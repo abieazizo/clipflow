@@ -203,33 +203,40 @@ function receipt(o: ReceiptOpts): string {
 function clipDemo(): string {
   return `
   <div class="clip-demo" role="img" aria-label="During your live, tap the Clip button. Then make the clip public so ClipFlow can see it.">
-    <div class="cd-phone" aria-hidden="true">
-      <div class="cd-screen">
-        <img src="/demo/live-clip-poster.webp" alt="" loading="lazy">
-        <span class="cd-live"><span class="cd-livedot"></span>LIVE</span>
-        <div class="cd-chat">
-          <span class="cd-bubble" style="--b:0">need that one!!</span>
-          <span class="cd-bubble" style="--b:1">🔥🔥🔥</span>
-          <span class="cd-bubble" style="--b:2">W squish</span>
-        </div>
-        <span class="cd-clipbtn">${icon("scissors")}<span>Clip</span></span>
-        <span class="cd-toast mono">Clip saved</span>
-        <div class="cd-panel">
-          <p class="cd-panel-title">Your clip</p>
-          <div class="cd-row">
-            <span>Make it public</span>
-            <span class="cd-switch"><span class="cd-knob"></span></span>
+    <div class="cd-stage" aria-hidden="true">
+      <div class="cd-phone">
+        <span class="cd-island"></span>
+        <div class="cd-screen">
+          <img src="/demo/live-clip-poster.webp" alt="" loading="lazy">
+          <span class="cd-scrim cd-scrim-top"></span>
+          <span class="cd-scrim cd-scrim-bot"></span>
+          <span class="cd-live"><span class="cd-livedot"></span>LIVE</span>
+          <div class="cd-hearts"><i></i><i></i><i></i></div>
+          <div class="cd-chat">
+            <span class="cd-bubble" style="--b:0"><i class="cd-ava" style="--a:#7C5CFF"></i>need that one!!</span>
+            <span class="cd-bubble" style="--b:1"><i class="cd-ava" style="--a:#2FB6A3"></i>&#128293;&#128293;&#128293;</span>
+            <span class="cd-bubble" style="--b:2"><i class="cd-ava" style="--a:#F5A524"></i>W squish</span>
           </div>
-          <p class="cd-public mono">Public &mdash; ClipFlow can see it</p>
+          <span class="cd-clipbtn">${icon("scissors")}<span>Clip</span></span>
+          <span class="cd-toast mono">Clip saved</span>
+          <div class="cd-panel">
+            <span class="cd-grab"></span>
+            <div class="cd-cliprow">
+              <img class="cd-clipthumb" src="/demo/live-clip-poster.webp" alt="">
+              <div><p class="cd-panel-title">Your clip</p><p class="cd-panel-sub mono">just now</p></div>
+            </div>
+            <div class="cd-row"><span>Make it public</span><span class="cd-switch"><span class="cd-knob"></span></span></div>
+            <p class="cd-public">Public &mdash; ClipFlow posts it</p>
+          </div>
+          <span class="cd-tap cd-tap1"></span>
+          <span class="cd-tap cd-tap2"></span>
         </div>
-        <span class="cd-tap cd-tap1"></span>
-        <span class="cd-tap cd-tap2"></span>
       </div>
     </div>
     <ol class="cd-steps">
-      <li><span class="step-num">1</span><div><p class="s-label">Tap Clip during your live</p><p class="s-sub">The button you already use.</p></div></li>
-      <li><span class="step-num">2</span><div><p class="s-label">Make the clip public</p><p class="s-sub">Private clips are invisible to ClipFlow.</p></div></li>
-      <li><span class="step-num">3</span><div><p class="s-label">Done &mdash; it posts itself</p><p class="s-sub">Reels + TikTok drafts, captioned.</p></div></li>
+      <li><span class="step-num cd-n1">1</span><div><p class="s-label">Tap Clip during your live</p><p class="s-sub">The button you already use.</p></div></li>
+      <li><span class="step-num cd-n2">2</span><div><p class="s-label">Make the clip public</p><p class="s-sub">Private clips are invisible to ClipFlow.</p></div></li>
+      <li><span class="step-num cd-n3">3</span><div><p class="s-label">Done &mdash; it posts itself</p><p class="s-sub">Reels + TikTok drafts, captioned.</p></div></li>
     </ol>
   </div>`;
 }
@@ -592,7 +599,7 @@ export interface WizardQuery {
   error?: string;
 }
 
-const WIZ_STEPS = 6;
+const WIZ_STEPS = 7;
 
 function wizDots(step: number): string {
   return `<div class="dots" role="progressbar" aria-valuemin="1" aria-valuemax="${WIZ_STEPS}" aria-valuenow="${step}" aria-label="Step ${step} of ${WIZ_STEPS}">
@@ -731,6 +738,16 @@ export function welcomePage(
       </div>
     </section>
     ${captionIsland(acct)}`;
+  } else if (s === 6) {
+    content = `
+    <section class="wiz-step" data-rise style="--i:0">
+      <h1 class="display">One thing to remember<span class="period">.</span></h1>
+      <p class="wiz-sub">Clips only reach ClipFlow when they&rsquo;re <strong>public</strong>. Here&rsquo;s the whole move:</p>
+      <div class="wiz-body card">${clipDemo()}</div>
+      <div class="wiz-actions">
+        <a class="btn" href="/welcome?step=7">Got it</a>
+      </div>
+    </section>`;
   } else {
     // one signal per fact: the leading ✓ says "done"; the right side is the
     // quiet mono handle. Captions show the template's opening words, not a name.
@@ -764,11 +781,10 @@ export function welcomePage(
           <input type="hidden" name="csrf" value="${esc(csrf)}">
           <button class="btn btn-block" type="submit" data-loading-text="Opening&hellip;">Open my dashboard</button>
         </form>
-        <button type="button" class="wiz-quiet-link" data-sheet-open="clip-demo" style="margin-inline:auto">See how to clip</button>
         <button type="button" class="wiz-quiet-link" data-sheet-open="founder" style="margin-inline:auto">Who made this?</button>
       </div>
     </section>`;
-    after = clipDemoSheet() + sheet("founder", "Hi — I'm Abie.",
+    after = sheet("founder", "Hi — I'm Abie.",
       `<p>I sell on Whatnot as <a class="mono" href="https://www.whatnot.com/user/${SELLER_WN}" target="_blank" rel="noopener">@${SELLER_WN}</a>. I built ClipFlow because after a long show, reposting clips was the chore I always skipped. It runs my shop&rsquo;s clips every show &mdash; yours go through the same pipeline.</p>
        <p class="mono" style="margin-top:var(--s-3);font-size:12.5px">IG @${SELLER_IG} &middot; TikTok @${SELLER_TT}</p>`);
   }
@@ -975,7 +991,7 @@ export function dashboard(
       <h2 class="display">${connected ? "One step left" : "Two quick steps"}<span class="period">.</span></h2>
       <div class="setup-rows">${stepRows}</div>
       <div class="setup-actions">${actions}
-        <button class="btn-text" type="button" data-sheet-open="clip-demo" style="color:var(--sub)">See how to clip</button>
+        <button class="howto-btn" type="button" data-sheet-open="clip-demo" style="justify-self:center">${icon("scissors")}See how to clip</button>
       </div>
     </section>`;
   } else {
@@ -993,7 +1009,7 @@ export function dashboard(
       </div>
       ${hasReceipts ? "" : `<p class="status-line">Clip during your live and make it <strong>public</strong> &mdash; it&rsquo;ll show up here.</p>`}
     </section>
-    <p data-rise style="--i:1;text-align:center"><button class="btn-text" type="button" data-check-now data-loading-text="Checking&hellip;">Check for clips now</button>${hasReceipts ? "" : `<button class="btn-text" type="button" data-sheet-open="clip-demo" style="color:var(--sub)">How to clip</button>`}</p>
+    <p data-rise style="--i:1;text-align:center"><button class="btn-text" type="button" data-check-now data-loading-text="Checking&hellip;">Check for clips now</button>${hasReceipts ? "" : `<button class="howto-btn" type="button" data-sheet-open="clip-demo">${icon("scissors")}How to clip</button>`}</p>
     ${failed > 0 ? `<p class="fail-row" data-rise style="--i:2">${failed} post${failed === 1 ? "" : "s"} didn&rsquo;t go out &mdash; <a href="/history?filter=failed">Fix in Clips</a></p>` : ""}`;
   }
 
@@ -1094,11 +1110,11 @@ export function historyPage(
         <h3>Nothing here</h3>
         <p>No posts match this filter.</p>
       </div>`
-    : `<div class="empty">
-        <div class="empty-art">${icon("receipt")}</div>
+    : `<div class="empty" style="padding-bottom:var(--s-4)">
         <h3>No clips yet<span class="period">.</span></h3>
-        <p>Clip on your next live and make it public &mdash; we can only see public clips.</p>
-      </div>`;
+        <p>Here&rsquo;s the whole move on your next live:</p>
+      </div>
+      <div class="card">${clipDemo()}</div>`;
 
   const sheets = posts.map((p, i) => {
     const caption = renderTemplate(effectiveTemplate(acct), {
@@ -1120,8 +1136,9 @@ export function historyPage(
   }).join("");
 
   const content = `
-    <section class="page-head" data-rise style="--i:0">
+    <section class="page-head row-between" data-rise style="--i:0">
       <h1 class="display page-title">Clips</h1>
+      ${posts.length ? `<button class="howto-btn" type="button" data-sheet-open="clip-demo">${icon("scissors")}How to clip</button>` : ""}
     </section>
     ${opts.query?.retried ? `<div class="banner banner-ok" role="status">${icon("check-circle")}<span>Retry queued. It posts within a few minutes.</span></div>` : ""}
     <div class="seg" role="group" aria-label="Filter clips" data-filters data-start="${startFilter}">
@@ -1135,7 +1152,7 @@ export function historyPage(
 
   return appShell({
     title: "Clips", tab: "clips", content, csrf: opts.csrf,
-    scripts: ["/js/clips.js"], after: sheets,
+    scripts: ["/js/clips.js"], after: sheets + clipDemoSheet(),
   });
 }
 
