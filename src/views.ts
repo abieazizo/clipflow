@@ -236,7 +236,7 @@ function clipDemo(): string {
     <ol class="cd-steps">
       <li><span class="step-num cd-n1">1</span><div><p class="s-label">Tap Clip during your live</p><p class="s-sub">The button you already use.</p></div></li>
       <li><span class="step-num cd-n2">2</span><div><p class="s-label">Make the clip public</p><p class="s-sub">Private clips are invisible to ClipFlow.</p></div></li>
-      <li><span class="step-num cd-n3">3</span><div><p class="s-label">Done &mdash; it posts itself</p><p class="s-sub">Reels + TikTok drafts, captioned.</p></div></li>
+      <li><span class="step-num cd-n3">3</span><div><p class="s-label">Done &mdash; it posts itself</p><p class="s-sub">Instagram Reels + TikTok, captioned.</p></div></li>
     </ol>
   </div>`;
 }
@@ -376,7 +376,7 @@ export function landingPage(): string {
     lines: [
       { time: `<span class="receipt-time">9:41</span>`, what: "Clipped", who: `Whatnot @${SELLER_WN}`, mark: MARK.you },
       { time: `<span class="receipt-time">9:42</span>`, what: "Posted", who: `Instagram Reels @${SELLER_IG}`, mark: MARK.auto },
-      { time: `<span class="receipt-time">9:42</span>`, what: "In your drafts", who: `TikTok @${SELLER_TT}`, mark: MARK.auto },
+      { time: `<span class="receipt-time">9:42</span>`, what: "Posted", who: `TikTok @${SELLER_TT}`, mark: MARK.auto },
     ],
   });
 
@@ -384,7 +384,7 @@ export function landingPage(): string {
     head: ["ClipFlow", "Monthly"],
     lines: [
       { time: "", what: "Reels posting", mark: MARK.included },
-      { time: "", what: "TikTok drafts", mark: MARK.included },
+      { time: "", what: "TikTok posting", mark: MARK.included },
       { time: "", what: "Auto-captions", mark: MARK.included },
       { time: "", what: "AI show covers", mark: MARK.included },
       { time: "", what: "Your first week", mark: `<span class="mono">$0.00</span>` },
@@ -445,7 +445,7 @@ export function landingPage(): string {
     <div class="steps-list">
       <div class="step-line"><span class="t">9:41</span><div><p class="what">You clip on Whatnot</p><p class="how">The button you already use.</p></div></div>
       <div class="step-line"><span class="t">9:41</span><div><p class="what">We catch it</p><p class="how">Watching your public profile.</p></div></div>
-      <div class="step-line"><span class="t">9:42</span><div><p class="what">It&rsquo;s out</p><p class="how">Reels posted. TikTok drafted, captioned.</p></div></div>
+      <div class="step-line"><span class="t">9:42</span><div><p class="what">It&rsquo;s out</p><p class="how">Reels + TikTok posted, captioned.</p></div></div>
     </div>
   </section>
 
@@ -466,7 +466,7 @@ export function landingPage(): string {
   <section class="land-section" aria-label="Questions">
     <div class="faq-list">
       <div class="faq-item"><p class="q">Will this get me banned?</p><p class="a">No. Official platform tools &mdash; the route brands use.</p></div>
-      <div class="faq-item"><p class="q">Why do TikToks land in drafts?</p><p class="a">TikTok&rsquo;s rule for approved tools. One tap to publish.</p></div>
+      <div class="faq-item"><p class="q">Do TikToks post by themselves?</p><p class="a">Yes. If TikTok&rsquo;s daily limit hits, the clip lands in your drafts &mdash; one tap.</p></div>
       <div class="faq-item"><p class="q">What do I do during shows?</p><p class="a">Clip. That&rsquo;s it.</p></div>
     </div>
   </section>
@@ -701,7 +701,7 @@ export function welcomePage(
           : s === 3
             ? `<p class="sub">Opens Instagram&rsquo;s official login. We never see your password.</p>`
             : `<p class="sub">Opens TikTok&rsquo;s official login. We never see your password.</p>
-               <p class="fine" style="margin-top:var(--s-3)">TikTok drops clips in your drafts &mdash; their rule. One tap to publish.</p>`}
+               <p class="fine" style="margin-top:var(--s-3)">Posts straight to your TikTok. If TikTok&rsquo;s daily limit hits, it lands in your drafts &mdash; one tap.</p>`}
       </div>
       <div class="wiz-actions">
         ${conn
@@ -770,7 +770,7 @@ export function welcomePage(
           lines: [
             { time: brandCell("whatnot"), what: "Watching", mark: quietHandle(`@${esc(uname)}`) },
             { time: brandCell("instagram"), what: "Instagram Reels", mark: acct.instagram ? quietHandle(`@${esc(acct.instagram.username || "connected")}`) : quietHandle("not yet") },
-            { time: brandCell("tiktok"), what: "TikTok drafts", mark: acct.tiktok ? quietHandle(`@${esc(acct.tiktok.username || "connected")}`) : quietHandle("not yet") },
+            { time: brandCell("tiktok"), what: "TikTok", mark: acct.tiktok ? quietHandle(`@${esc(acct.tiktok.username || "connected")}`) : quietHandle("not yet") },
             { time: brandCell("receipt"), what: "Captions", mark: quietHandle(esc(capWords)) },
           ],
           print: true,
@@ -938,7 +938,7 @@ export function dashboard(
         <h1 class="display late-rise" style="--i:1">Your first clip is out<span class="period">.</span></h1>
         <div class="celebrate-actions">
           ${acct.instagram ? `<a class="btn late-rise" style="--i:2" href="https://www.instagram.com/${esc(acct.instagram.username)}/reels/" target="_blank" rel="noopener">View on Instagram ${icon("external-link")}</a>` : ""}
-          ${acct.tiktok ? `<a class="btn ${acct.instagram ? "btn-quiet" : ""} late-rise" style="--i:3" href="https://www.tiktok.com/@${esc(acct.tiktok.username)}" target="_blank" rel="noopener">Open TikTok drafts ${icon("external-link")}</a>` : ""}
+          ${acct.tiktok ? `<a class="btn ${acct.instagram ? "btn-quiet" : ""} late-rise" style="--i:3" href="https://www.tiktok.com/@${esc(acct.tiktok.username)}" target="_blank" rel="noopener">View on TikTok ${icon("external-link")}</a>` : ""}
           <a class="wiz-quiet-link late-rise" style="--i:4" href="/dashboard">Go to my dashboard</a>
         </div>
       </div>
@@ -1500,7 +1500,7 @@ export function billingPage(acct: Account, v: BillingView, active = true): strin
     planReceipt = receipt({
       head: ["ClipFlow", "Monthly"],
       lines: [
-        { time: "", what: "Everything included", who: "Reels · TikTok drafts · captions · covers", whoPlain: true },
+        { time: "", what: "Everything included", who: "Reels · TikTok · captions · covers", whoPlain: true },
         { time: "", what: "Your first week", who: `${v.daysLeft} day${v.daysLeft === 1 ? "" : "s"} left`, whoPlain: true, mark: `<span class="mono">$0.00</span>` },
         ...(firstCharge ? [{ time: "", what: "First charge", who: firstCharge, whoPlain: true, mark: `<span class="mono">$19.00</span>` }] : []),
       ],
@@ -1513,7 +1513,7 @@ export function billingPage(acct: Account, v: BillingView, active = true): strin
     planReceipt = receipt({
       head: ["ClipFlow", "Monthly"],
       lines: [
-        { time: "", what: "Everything included", who: "Reels · TikTok drafts · captions · covers", whoPlain: true },
+        { time: "", what: "Everything included", who: "Reels · TikTok · captions · covers", whoPlain: true },
         { time: "", what: "Card on file", who: "manage in Stripe", whoPlain: true, mark: `<span class="status-word sw-quiet">ON FILE</span>` },
       ],
       total: ["Each month", "$19.00"],
@@ -1535,7 +1535,7 @@ export function billingPage(acct: Account, v: BillingView, active = true): strin
       head: ["ClipFlow", "Monthly"],
       lines: [
         { time: "", what: "Free week", who: `${v.trialDays} days, starts when your card is added`, whoPlain: true, mark: `<span class="mono">$0.00</span>` },
-        { time: "", what: "Everything included", who: "Reels · TikTok drafts · captions · covers", whoPlain: true },
+        { time: "", what: "Everything included", who: "Reels · TikTok · captions · covers", whoPlain: true },
       ],
       total: ["After the week", "$19/mo"],
       note: "Nothing is deleted while you decide. History stays.",
@@ -1675,7 +1675,7 @@ export function privacyPage(): string {
   const sections = `
     <p class="legal-lead">What ClipFlow collects, why, and the control you have over it. It&rsquo;s short because ClipFlow does one thing.</p>
     <h2>What ClipFlow does</h2>
-    <p>ClipFlow watches your public Whatnot clips page and, when you publish a clip, posts that video to the Instagram and/or TikTok accounts you have connected — as a Reel on Instagram and as a TikTok draft. You clip; ClipFlow posts.</p>
+    <p>ClipFlow watches your public Whatnot clips page and, when you publish a clip, posts that video to the Instagram and/or TikTok accounts you have connected — as a Reel on Instagram and as a post on TikTok (if TikTok’s daily third-party limit is reached, the clip is delivered to your TikTok drafts instead). You clip; ClipFlow posts.</p>
     <h2>What we store</h2>
     <ul>
       <li><strong>Your email address</strong> — to identify your account and let you log in.</li>

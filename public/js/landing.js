@@ -80,7 +80,7 @@
       row.appendChild(el("span", "what", c.title || "Your clip"));
       row.appendChild(el("span", "status-word sw-faint", "AUTO"));
       what.appendChild(row);
-      what.appendChild(el("span", "who mono", "Instagram Reels · TikTok drafts"));
+      what.appendChild(el("span", "who mono", "Instagram Reels · TikTok"));
       line.appendChild(what);
       rc.appendChild(line);
     });
