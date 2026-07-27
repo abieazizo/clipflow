@@ -1351,6 +1351,18 @@ export function settingsPage(acct: Account, opts: { csrf: string; active: boolea
       </div>
     </div>
 
+    ${acct.isAdmin ? `
+    <div class="group">
+      <p class="group-title">Operator</p>
+      <div class="group-list">
+        <a class="grow" href="/admin">
+          ${icon("sliders")}
+          <span class="grow-label">Admin<span class="grow-sub">Every account, plan, and event</span></span>
+          ${icon("chevron-right", "chev")}
+        </a>
+      </div>
+    </div>` : ""}
+
     <div class="group">
       <p class="group-title">Help</p>
       <div class="group-list">
