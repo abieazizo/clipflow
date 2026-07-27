@@ -67,6 +67,7 @@ const ICON_PATHS: Record<string, string> = {
   tiktok: '<path fill="currentColor" stroke="none" d="M14.8 3h2.9c.3 2.3 1.6 3.6 3.8 3.9v3c-1.5-.03-2.8-.5-3.9-1.3v6.1a6 6 0 1 1-6-6.1l.6.02v3.2a2.9 2.9 0 1 0 2.6 2.9V3z"/>',
   whatnot: '<circle cx="12" cy="12" r="8.75"/><path d="M8 9.5l1.6 5 2.4-5 2.4 5 1.6-5"/>',
   clip: '<rect x="3.5" y="5" width="17" height="14" rx="3.5"/><path d="M10.5 9.7v4.6l4.2-2.3z"/>',
+  scissors: '<circle cx="6.5" cy="6.5" r="2.5"/><circle cx="6.5" cy="17.5" r="2.5"/><path d="M8.6 8.3 20 19M8.6 15.7 20 5"/>',
   play: '<path d="M9 6.8v10.4l8.6-5.2z" fill="currentColor" stroke="none"/>',
   check: '<path d="m4.5 12.8 4.8 4.7L19.5 6.5"/>',
   "check-circle": '<circle cx="12" cy="12" r="8.75"/><path d="m8.4 12.3 2.5 2.5 4.7-5.4"/>',
@@ -191,6 +192,51 @@ function receipt(o: ReceiptOpts): string {
   return o.print
     ? `<div class="will-print${o.celebrate ? " will-celebrate" : ""}"${o.printDelay ? ` data-print-delay="${o.printDelay}"` : ""}>${paper}</div>`
     : paper;
+}
+
+// ---------------------------------------------------------------------------
+// how-to-clip demo — an abstract live-stream phone (never Whatnot's real UI)
+// showing the two taps that matter: Clip during the live, then make it public.
+// Pure CSS animation; reduced-motion shows the frozen final frame.
+// ---------------------------------------------------------------------------
+
+function clipDemo(): string {
+  return `
+  <div class="clip-demo" role="img" aria-label="During your live, tap the Clip button. Then make the clip public so ClipFlow can see it.">
+    <div class="cd-phone" aria-hidden="true">
+      <div class="cd-screen">
+        <img src="/demo/live-clip-poster.webp" alt="" loading="lazy">
+        <span class="cd-live"><span class="cd-livedot"></span>LIVE</span>
+        <div class="cd-chat">
+          <span class="cd-bubble" style="--b:0">need that one!!</span>
+          <span class="cd-bubble" style="--b:1">🔥🔥🔥</span>
+          <span class="cd-bubble" style="--b:2">W squish</span>
+        </div>
+        <span class="cd-clipbtn">${icon("scissors")}<span>Clip</span></span>
+        <span class="cd-toast mono">Clip saved</span>
+        <div class="cd-panel">
+          <p class="cd-panel-title">Your clip</p>
+          <div class="cd-row">
+            <span>Make it public</span>
+            <span class="cd-switch"><span class="cd-knob"></span></span>
+          </div>
+          <p class="cd-public mono">Public &mdash; ClipFlow can see it</p>
+        </div>
+        <span class="cd-tap cd-tap1"></span>
+        <span class="cd-tap cd-tap2"></span>
+      </div>
+    </div>
+    <ol class="cd-steps">
+      <li><span class="step-num">1</span><div><p class="s-label">Tap Clip during your live</p><p class="s-sub">The button you already use.</p></div></li>
+      <li><span class="step-num">2</span><div><p class="s-label">Make the clip public</p><p class="s-sub">Private clips are invisible to ClipFlow.</p></div></li>
+      <li><span class="step-num">3</span><div><p class="s-label">Done &mdash; it posts itself</p><p class="s-sub">Reels + TikTok drafts, captioned.</p></div></li>
+    </ol>
+  </div>`;
+}
+
+function clipDemoSheet(): string {
+  return sheet("clip-demo", "How to clip", clipDemo(),
+    `<button class="btn btn-quiet" type="button" data-sheet-close>Got it</button>`);
 }
 
 // ---------------------------------------------------------------------------
@@ -718,10 +764,11 @@ export function welcomePage(
           <input type="hidden" name="csrf" value="${esc(csrf)}">
           <button class="btn btn-block" type="submit" data-loading-text="Opening&hellip;">Open my dashboard</button>
         </form>
+        <button type="button" class="wiz-quiet-link" data-sheet-open="clip-demo" style="margin-inline:auto">See how to clip</button>
         <button type="button" class="wiz-quiet-link" data-sheet-open="founder" style="margin-inline:auto">Who made this?</button>
       </div>
     </section>`;
-    after = sheet("founder", "Hi — I'm Abie.",
+    after = clipDemoSheet() + sheet("founder", "Hi — I'm Abie.",
       `<p>I sell on Whatnot as <a class="mono" href="https://www.whatnot.com/user/${SELLER_WN}" target="_blank" rel="noopener">@${SELLER_WN}</a>. I built ClipFlow because after a long show, reposting clips was the chore I always skipped. It runs my shop&rsquo;s clips every show &mdash; yours go through the same pipeline.</p>
        <p class="mono" style="margin-top:var(--s-3);font-size:12.5px">IG @${SELLER_IG} &middot; TikTok @${SELLER_TT}</p>`);
   }
@@ -927,7 +974,9 @@ export function dashboard(
     <section class="card setup-card" data-rise style="--i:1">
       <h2 class="display">${connected ? "One step left" : "Two quick steps"}<span class="period">.</span></h2>
       <div class="setup-rows">${stepRows}</div>
-      <div class="setup-actions">${actions}</div>
+      <div class="setup-actions">${actions}
+        <button class="btn-text" type="button" data-sheet-open="clip-demo" style="color:var(--sub)">See how to clip</button>
+      </div>
     </section>`;
   } else {
     const failed = extras.stats?.failed ?? 0;
@@ -944,7 +993,7 @@ export function dashboard(
       </div>
       ${hasReceipts ? "" : `<p class="status-line">Clip during your live and make it <strong>public</strong> &mdash; it&rsquo;ll show up here.</p>`}
     </section>
-    <p data-rise style="--i:1;text-align:center"><button class="btn-text" type="button" data-check-now data-loading-text="Checking&hellip;">Check for clips now</button></p>
+    <p data-rise style="--i:1;text-align:center"><button class="btn-text" type="button" data-check-now data-loading-text="Checking&hellip;">Check for clips now</button>${hasReceipts ? "" : `<button class="btn-text" type="button" data-sheet-open="clip-demo" style="color:var(--sub)">How to clip</button>`}</p>
     ${failed > 0 ? `<p class="fail-row" data-rise style="--i:2">${failed} post${failed === 1 ? "" : "s"} didn&rsquo;t go out &mdash; <a href="/history?filter=failed">Fix in Clips</a></p>` : ""}`;
   }
 
@@ -982,6 +1031,7 @@ export function dashboard(
     title: "Home", tab: "home", content, csrf,
     scripts: ["/js/home.js"],
     noTabs: celebrate,
+    after: celebrate ? "" : clipDemoSheet(),
   });
 }
 
@@ -1493,11 +1543,7 @@ export function guidePage(acct: Account, active = true): string {
       <h1 class="display page-title">How ClipFlow works</h1>
     </section>
     <div class="card" style="margin-bottom:var(--s-5)">
-      <div class="steps-list">
-        <div class="step-line"><span class="t">9:41</span><div><p class="what">You clip on Whatnot</p><p class="how">The Clip button you already use during lives. Publish it so it&rsquo;s on your public page.</p></div></div>
-        <div class="step-line"><span class="t">9:41</span><div><p class="what">We catch it</p><p class="how">ClipFlow watches your public clips page &mdash; no Whatnot login, ever.</p></div></div>
-        <div class="step-line"><span class="t">9:42</span><div><p class="what">It&rsquo;s out</p><p class="how">Posted to Reels with your caption. TikTok gets it as a draft &mdash; their rule for approved tools &mdash; one tap to publish.</p></div></div>
-      </div>
+      ${clipDemo()}
     </div>
     <div class="faq-list">
       <div class="faq-item"><p class="q">A clip didn&rsquo;t show up?</p><p class="a">Make sure the clip is <strong>public</strong> on Whatnot &mdash; private or saved-only clips are invisible to ClipFlow. Then tap Check on Home.</p></div>
