@@ -438,6 +438,43 @@ export function logEvent(accountId: string | null, type: string, detail?: string
     .run(new Date().toISOString(), accountId, type, detail ?? null);
 }
 
+// ---------------------------------------------------------------------------
+// Zernio orphan queue — Zernio accounts whose removal failed. Each one keeps
+// costing us money until Zernio confirms deletion, so the engine reaps them.
+// ---------------------------------------------------------------------------
+
+export interface ZernioOrphan {
+  accountId: string;
+  platform: string | null;
+  enqueuedAt: string;
+  attempts: number;
+  lastError: string | null;
+}
+
+/** Queue a Zernio account for retry-until-removed. Idempotent (PK = accountId). */
+export function enqueueOrphan(accountId: string, platform?: string | null): void {
+  if (!accountId) return;
+  getDb().prepare(
+    "INSERT OR IGNORE INTO zernio_orphans (accountId, platform, enqueuedAt, attempts) VALUES (?, ?, ?, 0)"
+  ).run(accountId, platform ?? null, new Date().toISOString());
+}
+
+export function listOrphans(limit = 50): ZernioOrphan[] {
+  return getDb().prepare(
+    "SELECT * FROM zernio_orphans ORDER BY enqueuedAt ASC LIMIT ?"
+  ).all(limit) as ZernioOrphan[];
+}
+
+export function removeOrphan(accountId: string): void {
+  getDb().prepare("DELETE FROM zernio_orphans WHERE accountId = ?").run(accountId);
+}
+
+export function bumpOrphan(accountId: string, error: string): void {
+  getDb().prepare(
+    "UPDATE zernio_orphans SET attempts = attempts + 1, lastError = ? WHERE accountId = ?"
+  ).run(error.slice(0, 300), accountId);
+}
+
 export function recentEvents(limit = 50): Array<{ at: string; accountId: string | null; type: string; detail: string | null }> {
   return getDb().prepare("SELECT at, accountId, type, detail FROM events ORDER BY id DESC LIMIT ?").all(limit) as any[];
 }

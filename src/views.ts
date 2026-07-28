@@ -611,9 +611,10 @@ export function welcomePage(
   acct: Account,
   step: number,
   csrf: string,
-  status: { metaConfigured: boolean; tiktokConfigured: boolean },
+  status: { metaConfigured: boolean; tiktokConfigured: boolean; canConnect?: boolean },
   query: WizardQuery = {}
 ): string {
+  const canConnect = status.canConnect ?? true;
   const s = Math.min(Math.max(Math.trunc(step) || 1, 1), WIZ_STEPS);
   const uname = acct.whatnotUsername;
 
@@ -706,12 +707,16 @@ export function welcomePage(
       <div class="wiz-actions">
         ${conn
           ? `<a class="btn" href="${next}">Next</a>`
-          : configured
-            ? `<a class="btn" href="/connect/${platform}?from=welcome">${icon(platform, "brand")} Connect ${label}</a>
-               <a class="wiz-quiet-link" href="${next}">Skip for now</a>`
-            : `<button class="btn" disabled>Connect ${label}</button>
+          : !configured
+            ? `<button class="btn" disabled>Connect ${label}</button>
                <p class="fine">Connections are being set up on our end &mdash; skip for now.</p>
-               <a class="wiz-quiet-link" href="${next}">Skip for now</a>`}
+               <a class="wiz-quiet-link" href="${next}">Skip for now</a>`
+            : !canConnect
+              ? `<a class="btn" href="/billing?need=connect&platform=${platform}">Add a card to connect</a>
+                 <p class="fine">First week free &mdash; your card just unlocks connecting. Nothing charges today.</p>
+                 <a class="wiz-quiet-link" href="${next}">Skip for now</a>`
+              : `<a class="btn" href="/connect/${platform}?from=welcome">${icon(platform, "brand")} Connect ${label}</a>
+                 <a class="wiz-quiet-link" href="${next}">Skip for now</a>`}
       </div>
     </section>`;
   } else if (s === 5) {
@@ -948,20 +953,22 @@ export function dashboard(
     const billingRow = b?.configured ?? false;
     const cardDone = b ? b.active : true;
     type StepState = "done" | "current" | "next";
+    // Card-first order: Whatnot → card → connect → clip. Connecting is what
+    // starts Zernio billing, so the card genuinely comes first now.
     const steps: Array<{ state: StepState; label: string; sub: string }> = [
       { state: "done", label: "Add your Whatnot", sub: `@${esc(uname)}` },
-      {
-        state: connected ? "done" : "current",
-        label: "Connect Instagram or TikTok",
-        sub: connected
-          ? [acct.instagram && `@${esc(acct.instagram.username)}`, acct.tiktok && `@${esc(acct.tiktok.username)}`].filter(Boolean).join(" · ")
-          : "Where your clips will go",
-      },
       ...(billingRow ? [{
-        state: (cardDone ? "done" : connected ? "current" : "next") as StepState,
+        state: (cardDone ? "done" : "current") as StepState,
         label: "Add a card",
         sub: cardDone ? "Free week running" : "Starts your free week — nothing charges today",
       }] : []),
+      {
+        state: connected ? "done" : (billingRow && !cardDone ? "next" : "current") as StepState,
+        label: "Connect Instagram or TikTok",
+        sub: connected
+          ? [acct.instagram && `@${esc(acct.instagram.username)}`, acct.tiktok && `@${esc(acct.tiktok.username)}`].filter(Boolean).join(" · ")
+          : (billingRow && !cardDone ? "Unlocks once your card's on" : "Where your clips will go"),
+      },
       { state: "next" as StepState, label: "Clip on your next live", sub: "Make it public — it posts itself from there" },
     ];
     let n = 0;
@@ -980,10 +987,16 @@ export function dashboard(
       </div>`;
     }).join("");
 
+    // Card-first: connecting creates a billable Zernio account, so a no-card
+    // seller is pointed at billing (their free week starts there); once a card
+    // is on file the real Connect buttons appear.
     const actions = !connected
-      ? `${status.metaConfigured ? `<a class="btn btn-block" href="/connect/instagram">${icon("instagram", "brand")} Connect Instagram</a>` : ""}
-         ${status.tiktokConfigured ? `<a class="btn btn-quiet btn-block" href="/connect/tiktok">${icon("tiktok", "brand")} Connect TikTok</a>` : ""}
-         ${!status.metaConfigured ? `<p class="fine">Connections are being set up on our end &mdash; check back soon.</p>` : ""}`
+      ? locked
+        ? `<a class="btn btn-block" href="/billing?need=connect&platform=instagram">Add a card to connect</a>
+           <p class="fine">First week free &mdash; your card unlocks connecting. Nothing charges today.</p>`
+        : `${status.metaConfigured ? `<a class="btn btn-block" href="/connect/instagram">${icon("instagram", "brand")} Connect Instagram</a>` : ""}
+           ${status.tiktokConfigured ? `<a class="btn btn-quiet btn-block" href="/connect/tiktok">${icon("tiktok", "brand")} Connect TikTok</a>` : ""}
+           ${!status.metaConfigured ? `<p class="fine">Connections are being set up on our end &mdash; check back soon.</p>` : ""}`
       : `<a class="btn btn-block" href="/billing">Add a card &mdash; first week free</a>`;
 
     hero = `
@@ -1245,18 +1258,21 @@ export function settingsPage(acct: Account, opts: { csrf: string; active: boolea
   const state = accountState(acct, settings.stripeConfigured);
   const daysLeft = trialDaysLeft(acct);
 
+  // Connecting is card-gated (it starts Zernio billing). A no-card seller's
+  // "Connect" points at billing; a carded seller connects straight away.
+  const canConnect = !(state === "locked" || state === "past_due");
   const platformRow = (platform: "instagram" | "tiktok", label: string) => {
     const conn = acct[platform];
     return conn
       ? `<button type="button" class="grow" data-sheet-open="disc-${platform}">
           ${icon(platform)}
-          <span class="grow-label">${label}</span>
+          <span class="grow-label">${label}<span class="grow-sub">Locked to your account</span></span>
           <span class="grow-value mono"><span class="dot dot-ok"></span>@${esc(conn.username || "connected")}</span>
-          ${icon("chevron-right", "chev")}
+          ${icon("lock", "chev")}
         </button>`
-      : `<a class="grow" href="/connect/${platform}">
+      : `<a class="grow" href="${canConnect ? `/connect/${platform}` : `/billing?need=connect&platform=${platform}`}">
           ${icon(platform)}
-          <span class="grow-label">${label}<span class="grow-sub">Not connected</span></span>
+          <span class="grow-label">${label}<span class="grow-sub">${canConnect ? "Not connected" : "Add a card to connect"}</span></span>
           <span class="grow-value">Connect</span>
           ${icon("chevron-right", "chev")}
         </a>`;
@@ -1384,7 +1400,7 @@ export function settingsPage(acct: Account, opts: { csrf: string; active: boolea
     if (!conn) return "";
     return sheet(`disc-${platform}`, label, `
       <p class="mono" style="font-size:13px"><span class="dot dot-ok"></span> @${esc(conn.username || "connected")}</p>
-      <p style="margin-top:var(--s-3)">Clips stop posting to ${label}. Reconnect any time.</p>`,
+      <p style="margin-top:var(--s-3)">This ${label} account is locked to your ClipFlow to keep posting stable. Disconnecting stops posting there &mdash; you can connect a different account afterward while your plan is active.</p>`,
       `<a class="btn btn-quiet" href="/disconnect/${platform}?t=${esc(csrf)}" data-loading-text="Disconnecting&hellip;">Disconnect ${label}</a>
        <button class="btn btn-quiet" type="button" data-sheet-close>Keep it connected</button>`);
   };
@@ -1469,6 +1485,8 @@ export interface BillingView {
   state: string;
   daysLeft: number;
   trialDays: number;
+  /** set when the seller was sent here trying to connect without a card */
+  needConnect?: string;
 }
 
 export function billingPage(acct: Account, v: BillingView, active = true): string {
@@ -1554,6 +1572,7 @@ export function billingPage(acct: Account, v: BillingView, active = true): strin
     <section class="page-head" data-rise style="--i:0">
       <h1 class="display page-title">Billing</h1>
     </section>
+    ${v.needConnect && (v.state === "locked" || v.state === "past_due") ? `<div class="banner banner-info" role="status">${icon("lock")}<span>Add a card to connect ${v.needConnect === "tiktok" ? "TikTok" : "Instagram"}. Your first week is free &mdash; nothing charges today.</span></div>` : ""}
     ${planReceipt}
     <div class="billing-actions">${actions}</div>`;
 

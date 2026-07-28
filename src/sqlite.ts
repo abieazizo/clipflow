@@ -100,6 +100,19 @@ function migrate(d: Database.Database): void {
       type TEXT NOT NULL,
       detail TEXT NULL
     );
+
+    -- Zernio accounts whose removal failed (disconnect/delete). Each connected
+    -- account costs us money on Zernio, so a failed DELETE must not be silently
+    -- dropped — it's enqueued here and the engine retries every pass until
+    -- Zernio confirms removal (or 404s), guaranteeing we never keep paying for
+    -- an account no user can see.
+    CREATE TABLE IF NOT EXISTS zernio_orphans (
+      accountId  TEXT PRIMARY KEY,
+      platform   TEXT NULL,
+      enqueuedAt TEXT NOT NULL,
+      attempts   INTEGER NOT NULL DEFAULT 0,
+      lastError  TEXT NULL
+    );
   `);
 
   // Additive column migrations for DBs created before the column existed. The

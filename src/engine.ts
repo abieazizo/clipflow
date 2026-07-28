@@ -15,12 +15,13 @@ import { join } from "node:path";
 import {
   listAccounts, isActive, updateAccount, logEvent,
   getPost as getPostRow, createPost, updatePost, listPosts,
+  listOrphans, removeOrphan, bumpOrphan,
   type Account, type PostRow,
 } from "./db.js";
 import { listClipIds, getClipMeta, type ClipMeta } from "./whatnot.js";
 import { downloadFile, clipPaths } from "./download.js";
 import { postEverywhere, type PlatformName } from "./poster.js";
-import { getPost as zernioGetPost } from "./zernio.js";
+import { getPost as zernioGetPost, disconnectAccount as zernioDisconnect } from "./zernio.js";
 import { loadAppSettings } from "./appconfig.js";
 import { sendMail, postFailedEmail } from "./mailer.js";
 
@@ -342,6 +343,27 @@ export function engineStatus() {
   };
 }
 
+/**
+ * Retry-until-removed for Zernio accounts whose DELETE failed during a
+ * disconnect or account deletion. Each lingering account is billed to us by
+ * Zernio, so we keep hammering DELETE (which treats 404 as success) every pass
+ * until it's gone. Removed from the queue on success; error bumped otherwise.
+ */
+async function reapOrphans(): Promise<void> {
+  const orphans = listOrphans();
+  if (orphans.length === 0) return;
+  log(`reaping ${orphans.length} orphaned Zernio account(s)`);
+  for (const o of orphans) {
+    const r = await zernioDisconnect(o.accountId); // 404 counts as ok
+    if (r.ok) {
+      removeOrphan(o.accountId);
+      logEvent(null, "orphan_reaped", `${o.platform ?? "?"} ${o.accountId}`);
+    } else {
+      bumpOrphan(o.accountId, r.error);
+    }
+  }
+}
+
 export function startEngine(): void {
   if (running) return;
   running = true;
@@ -352,6 +374,11 @@ export function startEngine(): void {
     for (;;) {
       const began = Date.now();
       lastPassAt = new Date(began).toISOString();
+      try {
+        await reapOrphans();
+      } catch (e) {
+        log(`orphan reap error: ${(e as Error).message}`);
+      }
       try {
         await onePass();
       } catch (e) {

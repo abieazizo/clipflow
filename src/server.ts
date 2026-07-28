@@ -35,6 +35,7 @@ import {
   isActive, accountState, trialDaysLeft, TRIAL_DAYS,
   postStats, postTotals, listPosts, getPostById, updatePost,
   createToken, consumeToken, peekToken, logEvent, adminStats, adminUserList, recentEvents,
+  enqueueOrphan,
   type Account,
 } from "./db.js";
 import { recentClips, startEngine, clipsDir, engineStatus, checkAccount } from "./engine.js";
@@ -571,7 +572,7 @@ app.get("/welcome", (req, res) => {
   const q = req.query as Record<string, string | undefined>;
   res.send(welcomePage(
     acct, step, csrfToken(acct.id),
-    { metaConfigured: settings.zernioConfigured, tiktokConfigured: settings.zernioConfigured },
+    { metaConfigured: settings.zernioConfigured, tiktokConfigured: settings.zernioConfigured, canConnect: isActive(acct, settings.stripeConfigured) },
     { connected: q.connected, error: q.error }
   ));
 });
@@ -799,7 +800,12 @@ app.post("/account/delete", async (req, res) => {
     const conn = acct[platform];
     if (conn?.accountId) {
       const r = await zernio.disconnectAccount(conn.accountId);
-      if (!r.ok) console.error(`[delete] Zernio removal failed for ${platform} ${conn.accountId}: ${r.error}`);
+      // The account row is about to be wiped, so a failed removal must be
+      // queued here or we'd pay Zernio forever for an unreachable account.
+      if (!r.ok) {
+        enqueueOrphan(conn.accountId, platform);
+        console.error(`[delete] Zernio removal failed for ${platform} ${conn.accountId}: ${r.error} (queued for reap)`);
+      }
     }
   }
   await billing.cancelSubscription(acct);
@@ -815,12 +821,14 @@ app.post("/account/delete", async (req, res) => {
 app.get("/billing", (req, res) => {
   const acct = currentAccount(req);
   if (!acct) return res.redirect("/login");
+  const need = req.query.need === "connect" ? cleanUsername(req.query.platform) ?? undefined : undefined;
   res.send(billingPage(acct, {
     configured: settings.stripeConfigured,
     csrf: csrfToken(acct.id),
     state: accountState(acct, settings.stripeConfigured),
     daysLeft: trialDaysLeft(acct),
     trialDays: TRIAL_DAYS,
+    needConnect: need,
   }, navActive(acct)));
 });
 
@@ -1269,6 +1277,17 @@ app.get("/connect/:platform", async (req, res) => {
   const back = fromWelcome ? (platform === "tiktok" ? "/welcome?step=4" : "/welcome?step=3") : "/dashboard";
   const sep = back.includes("?") ? "&" : "?";
   if (!settings.zernioConfigured) return res.redirect(`${back}${sep}error=zernio_not_configured`);
+  // Already connected on this platform → no-op (don't spin up a second Zernio
+  // account). Changing the linked account is deliberate: disconnect first.
+  if (acct[platform]) return res.redirect(`${back}${sep}connected=${platform}`);
+  // CARD-FIRST: connecting is what creates a billable Zernio account, so it's
+  // gated behind an active plan (card on file, trialing or active). A no-card
+  // seller is sent to billing — their free week starts when the card is added,
+  // and only then can they connect. In dev (Stripe unconfigured) isActive is
+  // always true, so local flows are unaffected.
+  if (!isActive(acct, settings.stripeConfigured)) {
+    return res.redirect(`/billing?need=connect&platform=${platform}`);
+  }
   if (!rateLimit(`connect:${acct.id}`, 10)) return res.redirect(`${back}${sep}error=slow_down`);
 
   const errCode = (r: { error: string; status?: number }): string =>
@@ -1330,7 +1349,13 @@ app.get("/disconnect/:platform", async (req, res) => {
   let partial = false;
   if (conn?.accountId) {
     const r = await zernio.disconnectAccount(conn.accountId);
-    if (!r.ok) { partial = true; console.error(`[disconnect] Zernio removal failed for ${platform} ${conn.accountId}: ${r.error}`); }
+    if (!r.ok) {
+      // Removal failed — Zernio keeps billing us until it's gone. Queue it so
+      // the engine retries every pass instead of losing it when we null the row.
+      partial = true;
+      enqueueOrphan(conn.accountId, platform);
+      console.error(`[disconnect] Zernio removal failed for ${platform} ${conn.accountId}: ${r.error} (queued for reap)`);
+    }
   }
   // Clear local state whether Zernio confirmed or not — never leave a pointer to a dead connection.
   await updateAccount(acct.id, { [platform]: null } as Partial<Account>);
