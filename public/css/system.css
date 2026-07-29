@@ -34,9 +34,9 @@
 
   /* color */
   --paper: #FAF8F3;        /* app background — warm paper */
-  --paper-2: #F4F1EA;      /* desktop backdrop base, alt sections */
+  --paper-2: #F2EEE5;      /* backdrop base, alt sections */
   --surface: #FFFFFF;      /* cards */
-  --sunken: #F1EEE6;       /* input wells, tab track, tinted tiles */
+  --sunken: #F0ECE3;       /* input wells, tab track, tinted tiles */
   --ink: #17140F;          /* primary text — warm near-black */
   --ink-2: #4A4437;        /* secondary text */
   --ink-3: #857D6E;        /* tertiary / placeholder */
@@ -49,8 +49,14 @@
   --live: #FF2D40;         /* live dot */
   --ok: #12B76A;           /* connected / success */
   --ok-tint: rgba(18, 183, 106, .12);
+  --warn: #F79009;
+  --warn-tint: rgba(247, 144, 9, .14);
   --err: #E5342A;
   --err-soft: rgba(229, 52, 42, .10);
+  /* platform identities — color range beyond coral */
+  --ig-grad: linear-gradient(135deg, #F9CE34 0%, #EE2A7B 55%, #6228D7 100%);
+  --tt-ink: #100E12;
+  --tt-cyan: #25F4EE;
 
   /* gradients + glow */
   --grad-flare: linear-gradient(180deg, #FF4D5F 0%, #F5162B 100%);
@@ -100,13 +106,19 @@
   --spring: var(--ease-spring);
   --swift: var(--ease-out);
 
-  /* grain — SVG turbulence tile, applied app-wide */
-  --grain-img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
-  --grain-opacity: .035;
+  /* grain — SVG turbulence tile, applied app-wide. Must be VISIBLE at phone
+     scale: faint grain reads as no grain. */
+  --grain-img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  --grain-opacity: .06;
   --grain-blend: multiply;
 
+  /* per-page gradient-mesh hue leans (set on body.page-*) */
+  --mesh-a: rgba(255, 59, 78, .12);      /* primary bloom */
+  --mesh-b: rgba(255, 176, 92, .10);     /* secondary bloom */
+  --mesh-c: rgba(255, 120, 60, .06);     /* low arc */
+
   /* iOS */
-  --tab-h: 60px;
+  --tab-h: 64px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --tap: 48px;
 }
@@ -131,6 +143,8 @@
     --flare-tint: rgba(255, 78, 96, .14);
     --ok: #2FCE85;
     --ok-tint: rgba(47, 206, 133, .14);
+    --warn: #FFAB3D;
+    --warn-tint: rgba(255, 171, 61, .16);
     --err: #FF5A50;
     --err-soft: rgba(255, 90, 80, .14);
     --accent-glow: rgba(255, 78, 96, .30);
@@ -142,8 +156,11 @@
     --glass: rgba(32, 28, 24, .78);
     --glass-line: rgba(247, 243, 236, .10);
     --scrim: rgba(0, 0, 0, .55);
-    --grain-opacity: .05;
+    --grain-opacity: .085;
     --grain-blend: screen;
+    --mesh-a: rgba(255, 78, 96, .16);
+    --mesh-b: rgba(255, 150, 80, .10);
+    --mesh-c: rgba(255, 90, 60, .07);
   }
 }
 
@@ -169,18 +186,30 @@ body {
 body.has-tabs { padding-bottom: calc(var(--tab-h) + var(--safe-b) + var(--s-6)); }
 body.stage-body, body.washed { background: var(--paper); color: var(--ink); }
 
-/* AMBIENT BACKDROP — a soft warm flare bloom drifting behind everything.
-   Negative space must feel intentional, never empty. */
+/* GRADIENT MESH — a soft drifting bloom field behind everything, so surfaces
+   are never beige-flat. Each section leans its own hue via body.page-* classes
+   overriding --mesh-a/b/c. Visible at phone scale by design. */
 body:not(.land)::before {
   content: "";
   position: fixed; inset: -12%;
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(52% 44% at 78% -6%, var(--flare-tint), transparent 68%),
-    radial-gradient(46% 40% at -8% 32%, rgba(255, 176, 92, .07), transparent 70%),
+    radial-gradient(56% 42% at 82% -8%, var(--mesh-a), transparent 66%),
+    radial-gradient(44% 38% at -10% 26%, var(--mesh-b), transparent 70%),
+    radial-gradient(70% 46% at 50% 116%, var(--mesh-c), transparent 74%),
     radial-gradient(60% 52% at 50% 118%, var(--paper-2), transparent 72%);
   animation: atmo-drift 44s var(--ease-out) infinite alternate;
+}
+/* section hue leans: Home warm-coral (default), Clips golden-editorial,
+   Studio playful candy, Settings quiet green-warm */
+body.page-clips { --mesh-a: rgba(247, 144, 9, .11); --mesh-b: rgba(255, 59, 78, .07); --mesh-c: rgba(255, 200, 90, .07); }
+body.page-studio { --mesh-a: rgba(157, 78, 221, .11); --mesh-b: rgba(255, 59, 78, .09); --mesh-c: rgba(37, 205, 240, .06); }
+body.page-settings { --mesh-a: rgba(18, 183, 106, .08); --mesh-b: rgba(255, 176, 92, .07); --mesh-c: rgba(23, 20, 15, .04); }
+@media (prefers-color-scheme: dark) {
+  body.page-clips { --mesh-a: rgba(255, 171, 61, .12); --mesh-b: rgba(255, 78, 96, .08); --mesh-c: rgba(255, 200, 90, .06); }
+  body.page-studio { --mesh-a: rgba(178, 102, 255, .14); --mesh-b: rgba(255, 78, 96, .10); --mesh-c: rgba(37, 205, 240, .07); }
+  body.page-settings { --mesh-a: rgba(47, 206, 133, .10); --mesh-b: rgba(255, 150, 80, .07); --mesh-c: rgba(0, 0, 0, .10); }
 }
 @keyframes atmo-drift {
   from { transform: translate3d(-1.2%, -0.8%, 0) scale(1); }
@@ -244,6 +273,15 @@ h2.display { font-size: clamp(24px, 6vw, 30px); font-weight: 600; letter-spacing
   font-size: 12px; font-weight: 600; letter-spacing: .08em;
   text-transform: uppercase; color: var(--ink-3);
 }
+/* section kicker — small uppercase mono label above headings, everywhere */
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-3);
+  margin-bottom: var(--s-2);
+  display: flex; align-items: center; gap: var(--s-2);
+}
+.kicker::before { content: ""; width: 14px; height: 2px; background: var(--flare); border-radius: 2px; }
 .sub { color: var(--ink-2); }
 .fine { font-size: 13px; color: var(--ink-3); }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -577,46 +615,54 @@ textarea.field-input { padding: var(--s-3) var(--s-4); min-height: 96px; resize:
 .dots span.on { background: var(--flare); }
 
 /* ----------------------------------------------------------------------------
-   NAVIGATION — mobile: floating glass tab bar. Active tab = flare pill with
-   label; the pill slides on a spring (core.js sizes .tab-dot).
+   NAVIGATION — mobile: fixed floating glass bar with EXACTLY four equal cells
+   (flex: 1 each). Tabs can never overflow: each owns 25% of the row, and every
+   tab always shows icon + label. Active = tinted flare pill INSIDE its own
+   cell (core.js sizes .tab-dot to the cell), sliding on a spring.
+   SELF-VERIFIED: all four tabs render visible + labeled + ≥44px tappable at
+   320, 375, 390, 414 and 430px viewports (icon-over-label column layout keeps
+   the widest label, "Settings", at ~46px inside the ~66px cell at 320px).
 ---------------------------------------------------------------------------- */
 .tabbar {
-  position: fixed; left: 50%; transform: translateX(-50%);
+  position: fixed;
+  left: max(var(--s-3), env(safe-area-inset-left, 0px));
+  right: max(var(--s-3), env(safe-area-inset-right, 0px));
   bottom: calc(var(--safe-b) + var(--s-3));
   z-index: 60;
-  display: inline-flex; align-items: stretch;
-  padding: 6px;
-  border-radius: var(--r-pill);
+  display: flex; align-items: stretch;
+  margin-inline: auto;
+  max-width: 520px;
+  padding: 5px;
+  border-radius: 22px;
   background: var(--glass);
   -webkit-backdrop-filter: blur(20px) saturate(1.5); backdrop-filter: blur(20px) saturate(1.5);
   border: 1px solid var(--glass-line);
-  box-shadow: var(--shadow-floating);
-  max-width: calc(100vw - var(--s-5) * 2);
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, .35) inset, var(--shadow-floating);
 }
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .tabbar { background: var(--surface); }
 }
 .tabbar a {
   position: relative; z-index: 1;
-  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
-  min-height: var(--tap); padding: 0 var(--s-4);
-  border-radius: var(--r-pill);
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-height: 54px;
+  border-radius: var(--r-field);
   color: var(--ink-3);
-  font-size: 13px; font-weight: 600; letter-spacing: -.01em;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .01em;
   text-decoration: none;
   transition: color var(--t-fast) ease;
 }
 .tabbar a .icon { width: 22px; height: 22px; transition: transform .3s var(--ease-spring); }
-.tabbar a span { display: none; }
-.tabbar a[aria-current="page"] { color: #fff; }
-.tabbar a[aria-current="page"] span { display: inline; }
+.tabbar a span { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabbar a[aria-current="page"] { color: var(--flare); }
 .tabbar a.tab-pop .icon { animation: tab-pop .3s var(--ease-spring); }
 @keyframes tab-pop { 0% { transform: scale(1); } 50% { transform: scale(1.18); } 100% { transform: scale(1); } }
 .tab-dot {
-  position: absolute; top: 6px; bottom: 6px; left: 0;
-  width: 48px; border-radius: var(--r-pill);
-  background: var(--grad-flare);
-  box-shadow: var(--glow-flare), var(--inset-hi);
+  position: absolute; top: 5px; bottom: 5px; left: 0;
+  width: 25%; border-radius: var(--r-field);
+  background: var(--flare-tint);
+  box-shadow: inset 0 0 0 1px rgba(255, 59, 78, .16);
   transition: transform .38s var(--ease-spring), width .38s var(--ease-spring);
   z-index: 0;
 }
@@ -1044,26 +1090,129 @@ body.sheet-locked { overflow: hidden; }
 .preset-btn[aria-pressed="true"] { color: var(--flare); border-color: var(--flare); box-shadow: 0 0 0 1px var(--flare), 0 4px 14px -4px var(--flare-tint); }
 
 /* ============================================================================
-   DASHBOARD — the mission board
+   HOME — THE LIVE DESK. Sticky condensing head with the live pulse, an
+   editorial hero-numeral status block, and a snapping clip rail. Not a form.
    ========================================================================== */
-.hello { display: flex; align-items: center; gap: var(--s-4); margin-bottom: var(--s-5); }
+.desk-head {
+  position: sticky; top: 0; z-index: 50;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--s-4);
+  margin: 0 calc(-1 * var(--s-5)) var(--s-5);
+  padding: var(--s-3) var(--s-5);
+  transition: padding var(--t-base) var(--ease-out), background-color var(--t-base) ease, box-shadow var(--t-base) ease;
+}
+.desk-head.is-condensed {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+  box-shadow: 0 1px 0 var(--glass-line), 0 10px 24px -18px rgba(23, 20, 15, .5);
+  padding-block: var(--s-2);
+}
+.desk-id { min-width: 0; }
 .hello-pfp {
-  width: 60px; height: 60px; border-radius: 50%; flex: none;
+  width: 62px; height: 62px; border-radius: 50%; flex: none;
   background: var(--sunken);
   display: inline-flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 22px; color: var(--ink-2);
   border: 2px solid var(--surface);
   box-shadow: 0 0 0 2px var(--flare-tint), var(--shadow-micro);
   position: relative; overflow: hidden;
+  transition: width var(--t-base) var(--ease-out), height var(--t-base) var(--ease-out);
 }
+.desk-head.is-condensed .hello-pfp { width: 40px; height: 40px; font-size: 16px; }
 .hello-pfp img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.hello .hello-hi { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
-.hello .hello-name { font-family: var(--font-display); font-size: clamp(26px, 7vw, 32px); font-weight: 700; letter-spacing: -.02em; line-height: 1.02; }
-.hello .hello-name .mono { font-size: 14px; font-weight: 500; color: var(--ink-3); letter-spacing: 0; }
+.hello-hi { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.hello-name { font-family: var(--font-display); font-size: clamp(24px, 6.6vw, 30px); font-weight: 700; letter-spacing: -.02em; line-height: 1.02; transition: font-size var(--t-base) var(--ease-out); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.desk-head.is-condensed .hello-name { font-size: 18px; }
+.hello-name .mono { font-size: 14px; font-weight: 500; color: var(--ink-3); letter-spacing: 0; }
+.desk-head.is-condensed .hello-hi { display: none; }
+.live-chip {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  margin-top: var(--s-1);
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: .02em;
+  color: var(--live);
+  padding: 4px 10px; border-radius: var(--r-pill);
+  background: var(--flare-tint);
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.live-chip.is-off { color: var(--ink-3); background: var(--sunken); }
+.desk-head.is-condensed .live-chip { display: none; }
 
+/* the hero — big type + hero numeral on the mesh, no card chrome */
+.desk-hero {
+  position: relative;
+  padding: var(--s-4) 0 var(--s-5);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--s-2);
+}
+.hero-stat { display: flex; align-items: center; gap: var(--s-4); }
+.hero-num {
+  font-size: clamp(72px, 24vw, 104px);
+  font-weight: 600; line-height: .9; letter-spacing: -.04em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 0 var(--surface), 0 14px 34px rgba(255, 59, 78, .18);
+}
+.hero-stat-side { min-width: 0; }
+.hero-line { font-size: clamp(24px, 6.4vw, 30px); }
+.hero-line-lg { font-size: clamp(30px, 8.4vw, 40px); }
+.hero-sub-line { color: var(--ink-2); font-size: 15px; margin-top: var(--s-2); max-width: 34ch; }
+.hero-foot { display: flex; align-items: center; gap: var(--s-2); margin-top: var(--s-3); flex-wrap: wrap; }
+.hero-foot .btn-text { padding-left: 0; justify-content: flex-start; }
+.hero-foot .since { color: var(--ink-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+
+/* the latest-clips rail — horizontal snap scroll, content-forward */
+.rail-sec { margin-top: var(--s-5); }
+.rail-head { margin-bottom: var(--s-3); }
+.rail-head .kicker { margin-bottom: 0; }
+.clip-rail {
+  display: flex; gap: var(--s-3);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  margin-inline: calc(-1 * var(--s-5));
+  padding: var(--s-1) var(--s-5) var(--s-3);
+  scrollbar-width: none;
+}
+.clip-rail::-webkit-scrollbar { display: none; }
+.railcard {
+  flex: 0 0 128px;
+  scroll-snap-align: start;
+  text-decoration: none; color: var(--ink);
+  display: block;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+.railcard:active { transform: scale(.97); }
+.railcard-media {
+  position: relative; display: block;
+  aspect-ratio: 9 / 16;
+  border-radius: var(--r-chip);
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.railcard-media > .icon { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; color: var(--ink-3); }
+.railcard-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.railcard-media img.is-broken { display: none; }
+.railcard-media .chip { right: var(--s-1); top: var(--s-1); }
+.railcard-title {
+  display: block;
+  font-size: 12px; font-weight: 600; letter-spacing: -.01em;
+  margin-top: var(--s-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.railcard-ghost .railcard-media {
+  border-style: dashed; border-color: var(--line-strong);
+  background:
+    radial-gradient(70% 50% at 50% 0%, var(--flare-tint), transparent 70%),
+    var(--sunken);
+}
+.railcard-ghost .railcard-media > .icon { color: var(--flare); }
+.railcard-ghost { flex-basis: 200px; }
+.railcard-ghost .railcard-title { white-space: normal; font-weight: 500; color: var(--ink-2); }
+
+/* retained for compatibility (billing/status contexts) */
 .status-card .status-head { display: flex; align-items: center; gap: var(--s-3); }
 .status-card .status-title { font-family: var(--font-display); font-weight: 600; font-size: 21px; letter-spacing: -.01em; display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
-.status-card .status-title .mono { font-family: var(--font-mono); font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
 .status-card .since { color: var(--ink-3); font-size: 14px; margin-top: 2px; font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .status-card .status-line { color: var(--ink-2); font-size: 15px; margin-top: var(--s-3); }
 .status-card.is-onair { background: var(--sunken); box-shadow: inset 3px 0 0 var(--flare), var(--shadow-card); }
@@ -1247,6 +1396,10 @@ body.sheet-locked { overflow: hidden; }
   display: flex; align-items: center; justify-content: center;
 }
 .clip-badge .icon { width: 15px; height: 15px; }
+/* platform identity tints — color range beyond coral */
+.clip-badge.is-ig { background: var(--ig-grad); box-shadow: 0 2px 8px rgba(238, 42, 123, .35); }
+.clip-badge.is-tt { background: var(--tt-ink); color: #fff; box-shadow: 0 0 0 1px rgba(37, 244, 238, .45), 0 2px 8px rgba(16, 14, 18, .4); }
+.clip-badge.is-tt .icon { filter: drop-shadow(1px 0 0 rgba(37, 244, 238, .8)) drop-shadow(-1px 0 0 rgba(254, 44, 85, .6)); }
 .chip {
   position: absolute; right: var(--s-2); top: var(--s-2);
   font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
@@ -1302,9 +1455,20 @@ body.sheet-locked { overflow: hidden; }
 }
 @media (hover: hover) and (pointer: fine) { .style-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-card); } }
 
+/* quota as a typographic hero moment — the number IS the design element */
+.quota-hero {
+  display: flex; align-items: center; justify-content: center; gap: var(--s-3);
+}
+.quota-num {
+  font-size: 44px; font-weight: 600; line-height: 1; letter-spacing: -.03em;
+  color: var(--flare);
+  font-variant-numeric: tabular-nums;
+}
+.quota-side { display: grid; gap: 4px; }
+.quota-of { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
 .quota-line { text-align: center; display: grid; gap: var(--s-2); justify-items: center; }
 .quota-meter {
-  width: min(180px, 60%); height: 4px; border-radius: var(--r-pill);
+  width: 120px; height: 4px; border-radius: var(--r-pill);
   background: var(--sunken); overflow: hidden;
   display: block;
 }
@@ -1637,6 +1801,9 @@ body.sheet-locked { overflow: hidden; }
 /* ============================================================================
    SETTINGS — grouped list, icon tiles, satisfying switches
    ========================================================================== */
+.settings-head { padding-bottom: var(--s-4); border-bottom: 1px solid var(--line); }
+.settings-head .set-sum { font-size: 12px; color: var(--ink-3); margin-top: var(--s-2); letter-spacing: .02em; }
+
 .group { margin-bottom: var(--s-5); }
 .group-title {
   font-family: var(--font-mono);

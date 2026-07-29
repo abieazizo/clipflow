@@ -10,7 +10,7 @@
   var loading = $("[data-studio-loading]");
   var statusEl = $("[data-studio-status]");
   var resultEl = $("[data-studio-result]");
-  var quota = $(".quota-line .mono");
+  var quota = $("[data-quota-num]") || $(".quota-line .mono");
   var style = "hype";
   var statusTimer = null;
   var LINES = ["sketching…", "lettering…", "laying the colors…", "checking it reads…"];
@@ -87,7 +87,11 @@
         CF.toast(r.error || "Couldn't generate. Try a shorter title.", { err: true, ms: 5000 });
         return;
       }
-      if (quota && typeof r.left === "number") quota.textContent = r.left + " of " + quota.textContent.split(" of ")[1];
+      if (quota && typeof r.left === "number") {
+        quota.textContent = quota.hasAttribute("data-quota-num")
+          ? String(r.left)
+          : r.left + " of " + quota.textContent.split(" of ")[1];
+      }
       form.hidden = true; // the pick is the one action now; "Make another" brings the form back
       showResult(r.variations);
     });

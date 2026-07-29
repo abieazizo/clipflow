@@ -190,6 +190,25 @@
     });
   }
 
+  // --- number tickers: hero numerals count up on mount ---------------------------
+  var ticks = $$("[data-ticker]");
+  if (ticks.length && !reduced) {
+    ticks.forEach(function (el) {
+      var target = parseInt(el.getAttribute("data-ticker"), 10);
+      if (!isFinite(target) || target <= 0) return;
+      var dur = 900, t0 = null;
+      var ease = function (t) { return 1 - Math.pow(1 - t, 3); };
+      el.textContent = "0";
+      var step = function (ts) {
+        if (t0 === null) t0 = ts;
+        var p = Math.min(1, (ts - t0) / dur);
+        el.textContent = String(Math.round(ease(p) * target));
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
   // --- password eyes -----------------------------------------------------------
   $$("[data-eye]").forEach(function (btn) {
     btn.addEventListener("click", function () {

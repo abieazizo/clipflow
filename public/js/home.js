@@ -44,6 +44,14 @@
     }
   }
 
+  // desk head condenses once the page scrolls (sticky glass strip)
+  var deskHead = $("[data-desk-head]");
+  if (deskHead) {
+    var syncHead = function () { deskHead.classList.toggle("is-condensed", window.scrollY > 24); };
+    syncHead();
+    window.addEventListener("scroll", syncHead, { passive: true });
+  }
+
   // watcher ticker: elapsed since the last REAL poll, ticking every second
   var tick = $("[data-check-tick]");
   if (tick) {

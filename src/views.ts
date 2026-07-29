@@ -380,7 +380,7 @@ function appShell(o: ShellOpts): string {
 </div>
 ${o.after ?? ""}
 <div class="sheet-scrim" data-sheet-scrim hidden></div>
-${o.noTabs ? "" : tabbar(o.tab)}`, { bodyClass: o.noTabs ? undefined : "has-tabs", scripts: o.scripts, csrf: o.csrf, noindex: true });
+${o.noTabs ? "" : tabbar(o.tab)}`, { bodyClass: `page-${o.tab}${o.noTabs ? "" : " has-tabs"}`, scripts: o.scripts, csrf: o.csrf, noindex: true });
 }
 
 /** A bottom sheet. Hidden until core.js opens it by id. */
@@ -1055,44 +1055,71 @@ export function dashboard(
       </div>
     </section>`;
   } else {
+    // THE LIVE DESK hero — an editorial status block with a hero numeral,
+    // not a card. States what's happening now, in big type.
     const failed = extras.stats?.failed ?? 0;
-    const hasReceipts = clips.length > 0;
-    // the watcher card holds exactly three things: ping, who, ticking elapsed
+    const postedWeek = extras.stats?.postedWeek ?? 0;
     hero = `
-    <section class="card status-card" data-rise style="--i:0">
-      <div class="status-head">
-        <span class="dot dot-idle" data-watch-dot></span>
-        <div>
-          <p class="status-title">Watching <span class="mono">@${esc(uname)}</span></p>
-          ${extras.lastCheckedAt ? `<p class="since mono">checked <span data-check-tick data-ts="${esc(extras.lastCheckedAt)}">${esc(relShort(extras.lastCheckedAt))}</span> ago</p>` : ""}
+    <section class="desk-hero" data-rise style="--i:1">
+      <p class="kicker">This week</p>
+      ${postedWeek > 0 ? `
+      <div class="hero-stat">
+        <span class="hero-num mono" data-ticker="${postedWeek}">${postedWeek}</span>
+        <div class="hero-stat-side">
+          <p class="display hero-line">clip${postedWeek === 1 ? "" : "s"} posted<span class="period">.</span></p>
+          <p class="hero-sub-line">Reels + TikTok, on their own.</p>
         </div>
+      </div>` : `
+      <h2 class="display hero-line-lg">Ready for your next live<span class="period">.</span></h2>
+      <p class="hero-sub-line">Clip on Whatnot and make it <strong>public</strong> &mdash; it posts itself.</p>`}
+      <div class="hero-foot">
+        <button class="btn-text" type="button" data-check-now data-loading-text="Checking&hellip;">Check for clips now</button>
+        ${extras.lastCheckedAt ? `<span class="since mono">checked <span data-check-tick data-ts="${esc(extras.lastCheckedAt)}">${esc(relShort(extras.lastCheckedAt))}</span> ago</span>` : ""}
       </div>
-      ${hasReceipts ? "" : `<p class="status-line">Clip during your live and make it <strong>public</strong> &mdash; it&rsquo;ll show up here.</p>`}
-    </section>
-    <p data-rise style="--i:1;text-align:center"><button class="btn-text" type="button" data-check-now data-loading-text="Checking&hellip;">Check for clips now</button>${hasReceipts ? "" : `<button class="howto-btn" type="button" data-sheet-open="clip-demo">${icon("scissors")}How to clip</button>`}</p>
-    ${failed > 0 ? `<p class="fail-row" data-rise style="--i:2">${failed} post${failed === 1 ? "" : "s"} didn&rsquo;t go out &mdash; <a href="/history?filter=failed">Fix in Clips</a></p>` : ""}`;
+      ${failed > 0 ? `<p class="fail-row">${failed} post${failed === 1 ? "" : "s"} didn&rsquo;t go out &mdash; <a href="/history?filter=failed">Fix in Clips</a></p>` : ""}
+      ${clips.length === 0 ? `<p style="margin-top:var(--s-3)"><button class="howto-btn" type="button" data-sheet-open="clip-demo">${icon("scissors")}How to clip</button></p>` : ""}
+    </section>`;
   }
 
-  const recent = clipReceiptLines(acct, clips, 3);
-  const recents = celebrate ? "" : recent.length ? `
-    <section class="home-receipts" data-rise style="--i:1">
-      <div class="row-between"><h2>Latest</h2><a class="see-all" href="/history">All clips ${icon("arrow-right")}</a></div>
-      ${receipt({ lines: recent, print: true })}
-    </section>` : connected ? `
-    <section class="home-receipts" data-rise style="--i:1">
-      <div class="empty">
-        <div class="empty-art">${icon("receipt")}</div>
-        <h3>No clips yet<span class="period">.</span></h3>
-        <p>Clip on your next live and make it public &mdash; we can only see public clips.</p>
+  // Latest clips as a horizontally-snapping rail — content-forward, never a
+  // void. Ghost card motivates when empty.
+  const railCard = (c: ClipRow) => {
+    const posted = c.instagram || c.tiktok || c.tiktokDraft;
+    return `
+    <a class="railcard" href="/history">
+      <span class="railcard-media">
+        ${icon("clip")}
+        ${c.hasThumb ? `<img src="/thumb/${esc(c.clipId)}" alt="" loading="lazy" data-thumb-fallback>` : ""}
+        <span class="chip ${posted ? "chip-ok" : "chip-wait"}">${posted ? "Posted" : "Queued"}</span>
+      </span>
+      <span class="railcard-title">${esc(c.title?.trim() || "Clip")}</span>
+    </a>`;
+  };
+  const rail = celebrate ? "" : `
+    <section class="rail-sec" data-rise style="--i:2">
+      <div class="row-between rail-head"><p class="kicker">Latest clips</p><a class="see-all" href="/history">All clips ${icon("arrow-right")}</a></div>
+      <div class="clip-rail">
+        ${clips.length
+          ? clips.slice(0, 8).map(railCard).join("")
+          : `<div class="railcard railcard-ghost">
+              <span class="railcard-media">${icon("scissors")}</span>
+              <span class="railcard-title">Your next clip lands here.</span>
+            </div>`}
       </div>
-    </section>` : "";
+    </section>`;
 
+  const liveChip = !connected
+    ? ""
+    : acct.enabled
+      ? `<span class="live-chip"><span class="dot dot-live"></span>Watching for your next live</span>`
+      : `<span class="live-chip is-off"><span class="dot dot-off"></span>Posting paused</span>`;
   const hello = celebrate || !uname ? "" : `
-    <header class="hello" data-rise style="--i:0">
+    <header class="desk-head" data-desk-head data-rise style="--i:0">
       <span class="hello-pfp" data-hello-pfp>${esc(uname.charAt(0).toUpperCase())}</span>
-      <div>
+      <div class="desk-id">
         <p class="hello-hi" data-greet>Hi</p>
         <p class="hello-name" data-hello-name>@${esc(uname)}</p>
+        ${liveChip}
       </div>
     </header>`;
 
@@ -1100,7 +1127,7 @@ export function dashboard(
     ${hello}
     ${banners}
     ${hero}
-    ${recents}
+    ${rail}
   `;
 
   return appShell({
@@ -1164,7 +1191,7 @@ export function historyPage(
             ${icon("clip")}
             <img src="/thumb/${esc(p.clipId)}" alt="" loading="lazy" data-thumb-fallback>
             ${statusChip(p)}
-            <span class="clip-badge" aria-hidden="true">${icon(p.platform === "instagram" ? "instagram" : "tiktok")}</span>
+            <span class="clip-badge ${p.platform === "instagram" ? "is-ig" : "is-tt"}" aria-hidden="true">${icon(p.platform === "instagram" ? "instagram" : "tiktok")}</span>
             <span class="clip-play" aria-hidden="true">${icon("play")}</span>
           </button>
           <div class="clipcard-body">
@@ -1205,7 +1232,7 @@ export function historyPage(
 
   const content = `
     <section class="page-head row-between" data-rise style="--i:0">
-      <h1 class="display page-title">Clips</h1>
+      <div><p class="kicker">Your content</p><h1 class="display page-title">Clips</h1></div>
       ${posts.length ? `<button class="howto-btn" type="button" data-sheet-open="clip-demo">${icon("scissors")}How to clip</button>` : ""}
     </section>
     ${opts.query?.retried ? `<div class="banner banner-ok" role="status">${icon("check-circle")}<span>Retry queued. It posts within a few minutes.</span></div>` : ""}
@@ -1259,7 +1286,13 @@ export function thumbnailsPage(
           </button>`).join("")}
         </div>
         <button class="btn" type="submit" ${opts.left <= 0 ? "disabled" : ""}>Make my cover</button>
-        <p class="fine quota-line"><span class="quota-meter" aria-hidden="true"><span style="--q:${opts.perDay > 0 ? Math.round((opts.left / opts.perDay) * 100) : 0}%"></span></span><span><span class="mono">${opts.left} of ${opts.perDay}</span> left today</span></p>
+        <div class="quota-hero" role="status" aria-label="${opts.left} of ${opts.perDay} covers left today">
+          <span class="quota-num mono" data-quota-num data-ticker="${opts.left}">${opts.left}</span>
+          <div class="quota-side">
+            <span class="quota-of mono">of ${opts.perDay} today</span>
+            <span class="quota-meter" aria-hidden="true"><span style="--q:${opts.perDay > 0 ? Math.round((opts.left / opts.perDay) * 100) : 0}%"></span></span>
+          </div>
+        </div>
       </form>
       <div class="gen-stage" data-studio-loading hidden>
         <div class="gen-skels" aria-hidden="true"><div class="skeleton"></div><div class="skeleton"></div></div>
@@ -1297,6 +1330,7 @@ export function thumbnailsPage(
 
   const content = `
     <section class="page-head" data-rise style="--i:0">
+      <p class="kicker">Cover lab</p>
       <h1 class="display page-title">Covers for your next show<span class="period">.</span></h1>
     </section>
     ${form}
@@ -1347,9 +1381,12 @@ export function settingsPage(acct: Account, opts: { csrf: string; active: boolea
   const presetLabel = acct.captionPreset === "custom" ? "Your own words"
     : acct.captionPreset[0].toUpperCase() + acct.captionPreset.slice(1);
 
+  const connCount = [acct.whatnotUsername, acct.instagram, acct.tiktok].filter(Boolean).length;
   const content = `
-    <section class="page-head" data-rise style="--i:0">
+    <section class="page-head settings-head" data-rise style="--i:0">
+      <p class="kicker">Your setup</p>
       <h1 class="display page-title">Settings</h1>
+      <p class="set-sum mono">${connCount} connected &middot; ${acct.postingMode === "auto" ? "auto-posting" : "manual"} &middot; ${acct.enabled ? "on" : "paused"}</p>
     </section>
 
     <div class="group">
@@ -1629,6 +1666,7 @@ export function billingPage(acct: Account, v: BillingView, active = true): strin
 
   const content = `
     <section class="page-head" data-rise style="--i:0">
+      <p class="kicker">Plan</p>
       <h1 class="display page-title">Billing</h1>
     </section>
     ${v.needConnect && (v.state === "locked" || v.state === "past_due") ? `<div class="banner banner-info" role="status">${icon("lock")}<span>Add a card to connect ${v.needConnect === "tiktok" ? "TikTok" : "Instagram"}. Your first week is free &mdash; nothing charges today.</span></div>` : ""}
@@ -1647,6 +1685,7 @@ export function billingPage(acct: Account, v: BillingView, active = true): strin
 export function guidePage(acct: Account, active = true): string {
   const content = `
     <section class="page-head" data-rise style="--i:0">
+      <p class="kicker">Help</p>
       <h1 class="display page-title">How ClipFlow works</h1>
     </section>
     <div class="card" style="margin-bottom:var(--s-5)">
