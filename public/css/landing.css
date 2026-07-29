@@ -312,3 +312,43 @@
   .land .will-print.is-printing .receipt::after { display: none; }
   .land.js [data-rise] { opacity: 1; transform: none; }
 }
+
+/* ----------------------------------------------------------------------------
+   FREEZE GUARD — the landing keeps its shipped palette and type no matter what
+   system.css tokens become (new app themes, dark mode). Everything the landing
+   inherits from system.css is pinned to the values it shipped with.
+---------------------------------------------------------------------------- */
+.land {
+  color-scheme: light;
+  --bg: #FAFAF8; --paper: #FBFAF9; --paper-2: #F3F1EE;
+  --surface: #FFFFFF; --fill: #F2F2EE; --sunken: #F2F2EE;
+  --ink: #141317; --ink-2: #565159; --ink-3: #8C868F;
+  --sub: #565159; --faint: #8C868F;
+  --hairline: #E6E6E1; --line: #E6E6E1;
+  --border-strong: #D8D8D2; --line-strong: #D8D8D2;
+  --row-inset: rgba(22, 22, 26, .06);
+  --accent: #FF2757; --flare: #FF2757;
+  --accent-press: #E01047; --flare-2: #E01047;
+  --accent-soft: rgba(255, 39, 87, .10); --flare-tint: rgba(255, 39, 87, .10);
+  --accent-glow: rgba(255, 39, 87, .20);
+  --live: #FF2757;
+  --ok: #12A150; --ok-tint: rgba(18, 161, 80, .12);
+  --err: #E5342A; --err-soft: rgba(229, 52, 42, .10);
+  --grad-flare: var(--accent);
+  --glow-flare: none; --glow-flare-lg: none; --inset-hi: none;
+  --shadow-micro: 0 1px 2px rgba(22, 22, 26, .05);
+  --shadow-card: 0 1px 2px rgba(22, 22, 26, .05);
+  --shadow-pop: 0 8px 24px rgba(22, 22, 26, .12), 0 2px 6px rgba(22, 22, 26, .08);
+  --shadow-floating: 0 8px 24px rgba(22, 22, 26, .12), 0 2px 6px rgba(22, 22, 26, .08);
+  --glass: rgba(255, 255, 255, .72);
+  --glass-line: rgba(20, 18, 24, .10);
+  --scrim: rgba(22, 22, 26, .32);
+  --r-s: 8px; --r-m: 10px; --r-l: 12px; --r-xl: 16px;
+  --r-sm: 8px; --r-chip: 10px; --r-field: 12px; --r-card: 16px;
+  --font-display: var(--font-ui);
+}
+.land .display, .land .wordmark-text { font-family: var(--font-ui); }
+.land .wordmark-text { letter-spacing: -.05em; }
+.land .display { letter-spacing: -.045em; line-height: 1.03; }
+.land h2.display { font-weight: 700; letter-spacing: -.035em; }
+.land .eyebrow { font-family: var(--font-ui); }

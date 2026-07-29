@@ -271,7 +271,10 @@ function doc(title: string, body: string, o: DocOpts = {}): string {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(title)}</title>
 <meta name="description" content="Every clip from your Whatnot live, posted to Instagram Reels and TikTok. Automatic.">
-<meta name="theme-color" content="#F6F6F8">
+${(o.bodyClass ?? "").includes("land")
+    ? `<meta name="theme-color" content="#FBFAF9">`
+    : `<meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141210" media="(prefers-color-scheme: dark)">`}
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="Every clip from your Whatnot live, posted to Instagram Reels and TikTok. Automatic.">
 <meta property="og:image" content="${esc(loadAppSettings().baseUrl)}/og.png">
@@ -283,6 +286,7 @@ ${o.csrf ? `<meta name="cf-csrf" content="${esc(o.csrf)}">` : ""}
 <link rel="preload" href="/fonts/Geist-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/Geist-600.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/GeistMono-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/ClashDisplay-700.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/system.css?v=${ASSET_VER}">
 ${(o.styles ?? []).map((s) => `<link rel="stylesheet" href="${s}?v=${ASSET_VER}">`).join("\n")}
 <noscript><style>[data-rise],.late-rise{opacity:1 !important;transform:none !important}.will-print .receipt-paper,.will-print .receipt-line,.will-print .receipt-head,.will-print .receipt-total,.will-print .receipt-code{opacity:1 !important;transform:none !important}</style></noscript>
@@ -324,7 +328,7 @@ function iconFilled(name: string): string {
 
 function tabbar(current: Tab): string {
   return `<nav class="tabbar" aria-label="App">
-    ${TABS.map((t) => `<a href="${t.href}"${t.key === current ? ` aria-current="page"` : ""}>${t.key === current ? iconFilled(t.ic) : icon(t.ic)}<span>${t.label}</span></a>`).join("")}
+    ${TABS.map((t) => `<a href="${t.href}"${t.key === current ? ` aria-current="page"` : ""}>${icon(t.ic)}<span>${t.label}</span></a>`).join("")}
   </nav>`;
 }
 
@@ -338,18 +342,41 @@ interface ShellOpts {
   after?: string;
   /** takeover screens (celebration) hide the tab bar entirely */
   noTabs?: boolean;
+  /** rail footer identity (desktop sidebar) */
+  who?: { name: string; email: string };
 }
 
-/** App shell: slim top bar, content, 4-tab bottom bar, scrim for sheets. */
+function shellWho(acct: Account): { name: string; email: string } {
+  return { name: acct.whatnotUsername ? `@${acct.whatnotUsername}` : "Your shop", email: acct.email };
+}
+
+/** App shell: mobile = slim top bar + floating glass tab bar;
+    desktop (≥1024px) = fixed left rail with the same nav + account footer. */
 function appShell(o: ShellOpts): string {
+  const who = o.who;
   return doc(`${o.title} — ClipFlow`, `
-<div class="wrap">
-  <header class="appbar">
-    <a class="wordmark" href="/dashboard" aria-label="ClipFlow home"><span class="wordmark-text">ClipFlow<span class="period">.</span></span></a>
-  </header>
-  <main id="main">
-    ${o.content}
-  </main>
+<div class="shell">
+  <aside class="rail">
+    <a class="wordmark rail-brand" href="/dashboard" aria-label="ClipFlow home">${WORDMARK_INNER}</a>
+    <nav class="rail-nav" aria-label="App">
+      ${TABS.map((t) => `<a href="${t.href}"${t.key === o.tab ? ` aria-current="page"` : ""}>${icon(t.ic)}<span>${t.label}</span></a>`).join("")}
+    </nav>
+    ${who ? `<div class="rail-foot">
+      <span class="rail-ava" aria-hidden="true">${esc((who.name.replace(/^@+/, "") || who.email).charAt(0).toUpperCase())}</span>
+      <span class="rail-who"><span class="rw-name mono">${esc(who.name)}</span><span class="rw-mail">${esc(who.email)}</span></span>
+      <a href="/logout" aria-label="Log out">${icon("log-out")}</a>
+    </div>` : ""}
+  </aside>
+  <div class="shell-main">
+    <div class="content-col">
+      <header class="appbar">
+        <a class="wordmark" href="/dashboard" aria-label="ClipFlow home">${WORDMARK_INNER}</a>
+      </header>
+      <main id="main">
+        ${o.content}
+      </main>
+    </div>
+  </div>
 </div>
 ${o.after ?? ""}
 <div class="sheet-scrim" data-sheet-scrim hidden></div>
@@ -510,29 +537,36 @@ export function authPage(mode: "login" | "signup", error?: string, email?: strin
     : "";
   const body = `
 <main class="auth-wrap" id="main">
-  <div class="card auth-card" data-rise style="--i:0">
-    <a class="auth-brand" href="/" aria-label="ClipFlow home">${wordmark()}</a>
-    <h1 class="auth-title display">${isSignup ? "Create your account" : "Log in"}</h1>
-    <form method="post" action="/${mode}">
-      <label class="field">
-        <span class="field-label">Email</span>
-        <input class="field-input" type="email" name="email" value="${esc(email ?? "")}" autocomplete="email" inputmode="email" required maxlength="254">
-      </label>
-      <label class="field">
-        <span class="field-label">Password</span>
-        <span class="field-wrap">
-          <input class="field-input" type="password" name="password" autocomplete="${isSignup ? "new-password" : "current-password"}" required minlength="8" maxlength="200">
-          <button type="button" class="field-eye" data-eye aria-label="Show password">${icon("eye")}</button>
-        </span>
-        ${errHtml}
-      </label>
-      <button class="btn btn-block" type="submit" data-loading-text="${isSignup ? "Creating&hellip;" : "Logging in&hellip;"}">${isSignup ? "Create account" : "Log in"}</button>
-    </form>
-    ${isSignup
-      ? `<p class="auth-fine fine">First week free. No card yet.</p>
-         <p class="auth-switch">Already set up? <a href="/login">Log in</a></p>`
-      : `<p class="auth-switch"><a href="/forgot">Forgot password?</a></p>
-         <p class="auth-switch">New here? <a href="/signup">Create an account</a></p>`}
+  <div class="auth-grid">
+    <div class="auth-hero">
+      <span class="auth-bloom" aria-hidden="true"></span>
+      <a class="auth-brand" href="/" aria-label="ClipFlow home">${wordmark()}</a>
+      <h1 class="auth-statement" data-rise style="--i:0">Turn your lives into Reels &amp; TikToks<span class="period">.</span><br>Automatically<span class="period">.</span></h1>
+      <p class="auth-hero-sub" data-rise style="--i:1">Clip on Whatnot like you already do &mdash; ClipFlow posts it everywhere else.</p>
+    </div>
+    <div class="card auth-card" data-rise style="--i:2">
+      <h2 class="auth-title display">${isSignup ? "Create your account" : "Log in"}</h2>
+      <form method="post" action="/${mode}">
+        <label class="field">
+          <span class="field-label">Email</span>
+          <input class="field-input" type="email" name="email" value="${esc(email ?? "")}" autocomplete="email" inputmode="email" required maxlength="254">
+        </label>
+        <label class="field">
+          <span class="field-label">Password</span>
+          <span class="field-wrap">
+            <input class="field-input" type="password" name="password" autocomplete="${isSignup ? "new-password" : "current-password"}" required minlength="8" maxlength="200">
+            <button type="button" class="field-eye" data-eye aria-label="Show password">${icon("eye")}</button>
+          </span>
+          ${errHtml}
+        </label>
+        <button class="btn btn-block" type="submit" data-loading-text="${isSignup ? "Creating&hellip;" : "Logging in&hellip;"}">${isSignup ? "Create account" : "Log in"}</button>
+      </form>
+      ${isSignup
+        ? `<p class="auth-fine fine">First week free. No card yet.</p>
+           <p class="auth-switch">Already set up? <a href="/login">Log in</a></p>`
+        : `<p class="auth-switch"><a href="/forgot">Forgot password?</a></p>
+           <p class="auth-switch">New here? <a href="/signup">Create an account</a></p>`}
+    </div>
   </div>
 </main>`;
   return doc(`${isSignup ? "Create account" : "Log in"} — ClipFlow`, body, { noindex: true });
@@ -1008,9 +1042,13 @@ export function dashboard(
            ${!status.metaConfigured ? `<p class="fine">Connections are being set up on our end &mdash; check back soon.</p>` : ""}`
       : `<a class="btn btn-block" href="/billing">Add a card &mdash; first week free</a>`;
 
+    const doneCount = steps.filter((st) => st.state === "done").length;
+    const pct = Math.round((doneCount / steps.length) * 100);
     hero = `
     <section class="card setup-card" data-rise style="--i:1">
       <h2 class="display">${connected ? "One step left" : "Two quick steps"}<span class="period">.</span></h2>
+      <div class="launch-meta"><span class="mono-label">Launch sequence</span><span class="mono launch-count">${doneCount} of ${steps.length}</span></div>
+      <div class="launch-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${steps.length}" aria-valuenow="${doneCount}" aria-label="Setup progress"><span style="--p:${pct}%"></span></div>
       <div class="setup-rows">${stepRows}</div>
       <div class="setup-actions">${actions}
         <button class="howto-btn" type="button" data-sheet-open="clip-demo" style="justify-self:center">${icon("scissors")}See how to clip</button>
@@ -1066,7 +1104,7 @@ export function dashboard(
   `;
 
   return appShell({
-    title: "Home", tab: "home", content, csrf,
+    title: "Home", tab: "home", content, csrf, who: shellWho(acct),
     scripts: ["/js/home.js"],
     noTabs: celebrate,
     after: celebrate ? "" : clipDemoSheet(),
@@ -1100,32 +1138,40 @@ export function historyPage(
 ): string {
   const startFilter = opts.filter === "failed" ? "failed" : "all";
 
-  // one signal: the 20px status glyph. Failed rows add the Retry action.
-  const statusMark = (p: PostRow) =>
-    p.status === "posted" ? GLYPH.ok : p.status === "failed"
-      ? `<span class="mark-stack">${GLYPH.err}<form class="retry-inline" method="post" action="/history/retry/${esc(p.id)}"><input type="hidden" name="csrf" value="${esc(opts.csrf)}"><button class="retry-btn" type="submit" data-loading-text="&hellip;">Retry</button></form></span>`
-      : p.attempts > 0 ? GLYPH.spin : GLYPH.queue;
-
   const handleFor = (p: PostRow) =>
     p.platform === "instagram"
       ? `Instagram Reels${acct.instagram ? ` @${esc(acct.instagram.username)}` : ""}`
       : `TikTok${p.via === "draft" ? " drafts" : ""}${acct.tiktok ? ` @${esc(acct.tiktok.username)}` : ""}`;
 
-  const lines: ReceiptLine[] = posts.map((p, i) => ({
-    time: tstamp(p.postedAt ?? p.createdAt),
-    what: esc(p.clipTitle?.trim() || "Clip"),
-    who: handleFor(p),
-    mark: statusMark(p),
-    thumb: `/thumb/${esc(p.clipId)}`,
-    sheet: `post-${i}`,
-  }));
+  const counts = {
+    all: posts.length,
+    instagram: posts.filter((p) => p.platform === "instagram").length,
+    tiktok: posts.filter((p) => p.platform === "tiktok").length,
+    failed: posts.filter((p) => p.status === "failed").length,
+  };
 
-  // one receipt per post — a stack of receipts, newest first
+  const statusChip = (p: PostRow) =>
+    p.status === "posted" ? `<span class="chip chip-ok">Posted</span>`
+      : p.status === "failed" ? `<span class="chip chip-flare">Failed</span>`
+      : `<span class="chip chip-wait">${p.attempts > 0 ? "Retrying" : "Queued"}</span>`;
+
+  // populated: a gallery of clip cards — the "my content lives here" surface
   const stack = posts.length
-    ? `<div class="history-stack" data-history-stack>
+    ? `<div class="clipgrid" data-history-stack>
         ${posts.map((p, i) => `
-        <div data-post data-platform="${p.platform}" data-status="${p.status}">
-          ${receipt({ lines: [lines[i]] })}
+        <div class="clipcard" data-post data-platform="${p.platform}" data-status="${p.status}">
+          <button type="button" class="clipcard-media" data-sheet-open="post-${i}" aria-label="Open details: ${esc(p.clipTitle?.trim() || "Clip")}">
+            ${icon("clip")}
+            <img src="/thumb/${esc(p.clipId)}" alt="" loading="lazy" data-thumb-fallback>
+            ${statusChip(p)}
+            <span class="clip-badge" aria-hidden="true">${icon(p.platform === "instagram" ? "instagram" : "tiktok")}</span>
+            <span class="clip-play" aria-hidden="true">${icon("play")}</span>
+          </button>
+          <div class="clipcard-body">
+            <p class="clipcard-title">${esc(p.clipTitle?.trim() || "Clip")}</p>
+            <p class="clipcard-meta mono">${p.platform === "instagram" ? "Reels" : p.via === "draft" ? "TT drafts" : "TikTok"} &middot; <span data-iso="${esc(p.postedAt ?? p.createdAt)}">${esc(relShort(p.postedAt ?? p.createdAt))}</span></p>
+          </div>
+          ${p.status === "failed" ? `<form class="retry-inline" method="post" action="/history/retry/${esc(p.id)}"><input type="hidden" name="csrf" value="${esc(opts.csrf)}"><button class="retry-btn" type="submit" data-loading-text="&hellip;">Retry now</button></form>` : ""}
         </div>`).join("")}
       </div>
       <div class="empty" data-filter-empty hidden>
@@ -1165,15 +1211,15 @@ export function historyPage(
     ${opts.query?.retried ? `<div class="banner banner-ok" role="status">${icon("check-circle")}<span>Retry queued. It posts within a few minutes.</span></div>` : ""}
     <div class="seg" role="group" aria-label="Filter clips" data-filters data-start="${startFilter}">
       <span class="seg-pill" aria-hidden="true"></span>
-      <button type="button" data-filter="all" aria-pressed="true">All</button>
-      <button type="button" data-filter="instagram" aria-pressed="false">Instagram</button>
-      <button type="button" data-filter="tiktok" aria-pressed="false">TikTok</button>
-      <button type="button" data-filter="failed" aria-pressed="false">Failed</button>
+      <button type="button" data-filter="all" aria-pressed="true">All <span class="seg-n">${counts.all}</span></button>
+      <button type="button" data-filter="instagram" aria-pressed="false">IG <span class="seg-n">${counts.instagram}</span></button>
+      <button type="button" data-filter="tiktok" aria-pressed="false">TikTok <span class="seg-n">${counts.tiktok}</span></button>
+      <button type="button" data-filter="failed" aria-pressed="false">Failed <span class="seg-n">${counts.failed}</span></button>
     </div>
     ${stack}`;
 
   return appShell({
-    title: "Clips", tab: "clips", content, csrf: opts.csrf,
+    title: "Clips", tab: "clips", content, csrf: opts.csrf, who: shellWho(acct),
     scripts: ["/js/clips.js"], after: sheets + clipDemoSheet(),
   });
 }
@@ -1213,13 +1259,11 @@ export function thumbnailsPage(
           </button>`).join("")}
         </div>
         <button class="btn" type="submit" ${opts.left <= 0 ? "disabled" : ""}>Make my cover</button>
-        <p class="fine quota-line"><span class="mono">${opts.left} of ${opts.perDay}</span> left today</p>
+        <p class="fine quota-line"><span class="quota-meter" aria-hidden="true"><span style="--q:${opts.perDay > 0 ? Math.round((opts.left / opts.perDay) * 100) : 0}%"></span></span><span><span class="mono">${opts.left} of ${opts.perDay}</span> left today</span></p>
       </form>
       <div class="gen-stage" data-studio-loading hidden>
-        <div class="stage-panel">
-          <div class="gen-frame"><span class="light-bar" aria-hidden="true"></span></div>
-          <p class="gen-status" data-studio-status aria-live="polite">warming up&hellip;</p>
-        </div>
+        <div class="gen-skels" aria-hidden="true"><div class="skeleton"></div><div class="skeleton"></div></div>
+        <p class="gen-status" data-studio-status aria-live="polite">warming up&hellip;</p>
       </div>
       <div class="cover-result" data-studio-result hidden></div>
     </section>` : `
@@ -1238,11 +1282,18 @@ export function thumbnailsPage(
         </figure>`).join("")}
       </div>
     </section>` : opts.configured ? `
-    <div class="empty">
-      <div class="empty-art">${icon("image")}</div>
-      <h3>No covers yet<span class="period">.</span></h3>
-      <p>Type your show title above &mdash; first one takes about a minute.</p>
-    </div>` : "";
+    <section class="home-receipts">
+      <div class="row-between"><h2>Your covers</h2></div>
+      <div class="cover-grid ghost" aria-hidden="true">
+        <figure class="ghost-cover"><span class="ghost-type">FRIDAY<br>NIGHT<br>SQUISH</span></figure>
+        <figure class="ghost-cover"><span class="ghost-type">$1<br>STARTS</span></figure>
+        <figure class="ghost-cover"><span class="ghost-type">BIG<br>BREAKS</span></figure>
+      </div>
+      <div class="empty" style="padding-top:var(--s-4);padding-bottom:var(--s-2)">
+        <h3>No covers yet<span class="period">.</span></h3>
+        <p>Type your show title above &mdash; first one takes about a minute.</p>
+      </div>
+    </section>` : "";
 
   const content = `
     <section class="page-head" data-rise style="--i:0">
@@ -1252,7 +1303,7 @@ export function thumbnailsPage(
     ${grid}`;
 
   return appShell({
-    title: "Studio", tab: "studio", content, csrf: opts.csrf,
+    title: "Studio", tab: "studio", content, csrf: opts.csrf, who: shellWho(acct),
     scripts: ["/js/studio.js"],
   });
 }
@@ -1282,8 +1333,7 @@ export function settingsPage(acct: Account, opts: { csrf: string; active: boolea
       : `<a class="grow" href="${canConnect ? `/connect/${platform}` : `/billing?need=connect&platform=${platform}`}">
           ${icon(platform)}
           <span class="grow-label">${label}<span class="grow-sub">${canConnect ? "Not connected" : "Add a card to connect"}</span></span>
-          <span class="grow-value">Connect</span>
-          ${icon("chevron-right", "chev")}
+          <span class="grow-value grow-cta">Connect</span>
         </a>`;
   };
 
@@ -1363,7 +1413,7 @@ export function settingsPage(acct: Account, opts: { csrf: string; active: boolea
           <span class="grow-label">Change password</span>
           ${icon("chevron-right", "chev")}
         </button>
-        <a class="grow" href="/logout">
+        <a class="grow grow-logout" href="/logout">
           ${icon("log-out")}
           <span class="grow-label">Log out</span>
           ${icon("chevron-right", "chev")}
@@ -1478,7 +1528,7 @@ export function settingsPage(acct: Account, opts: { csrf: string; active: boolea
     ${captionIsland(acct)}`;
 
   return appShell({
-    title: "Settings", tab: "settings", content, csrf,
+    title: "Settings", tab: "settings", content, csrf, who: shellWho(acct),
     scripts: ["/js/settings.js"], after,
   });
 }
@@ -1586,7 +1636,7 @@ export function billingPage(acct: Account, v: BillingView, active = true): strin
     <div class="billing-actions">${actions}</div>`;
 
   return appShell({
-    title: "Billing", tab: "settings", content, csrf: v.csrf, after,
+    title: "Billing", tab: "settings", content, csrf: v.csrf, after, who: shellWho(acct),
   });
 }
 
@@ -1607,7 +1657,7 @@ export function guidePage(acct: Account, active = true): string {
       <div class="faq-item"><p class="q">Will this get me banned?</p><p class="a">No. Posting goes through Instagram&rsquo;s and TikTok&rsquo;s official tools &mdash; the route brands use.</p></div>
       <div class="faq-item"><p class="q">Something else?</p><p class="a"><a href="mailto:${CONTACT_EMAIL}">Email ${esc(SELLER_NAME)}</a>. A real person answers.</p></div>
     </div>`;
-  return appShell({ title: "Guide", tab: "settings", content });
+  return appShell({ title: "Guide", tab: "settings", content, who: shellWho(acct) });
 }
 
 // ---------------------------------------------------------------------------
@@ -1648,7 +1698,7 @@ export function statusPage(acct: Account, info: StatusInfo, active = true): stri
         ${row("Cover studio", info.geminiConfigured ? "configured" : "not configured", info.geminiConfigured)}
       </dl>
     </div>`;
-  return appShell({ title: "Status", tab: "settings", content });
+  return appShell({ title: "Status", tab: "settings", content, who: shellWho(acct) });
 }
 
 // ---------------------------------------------------------------------------
@@ -1803,5 +1853,5 @@ export function adminPage(
       </table>
     </div>`;
 
-  return appShell({ title: "Operator", tab: "settings", content, csrf });
+  return appShell({ title: "Operator", tab: "settings", content, csrf, who: shellWho(acct) });
 }

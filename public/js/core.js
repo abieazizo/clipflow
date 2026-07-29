@@ -166,17 +166,16 @@
   }
   window.cfPrint = startPrint; // for receipts injected after load
 
-  // --- tab bar: berry dot slides, icon pops ------------------------------------
+  // --- tab bar: the flare pill slides behind the active tab on a spring --------
   var tabbar = $(".tabbar");
   if (tabbar) {
     var dot = document.createElement("span");
     dot.className = "tab-dot";
     tabbar.appendChild(dot);
     var placeDot = function (link, animate) {
-      var r = link.getBoundingClientRect(), b = tabbar.getBoundingClientRect();
       if (!animate) dot.style.transition = "none";
-      // 22px indicator bar seated flush at the tab's top edge (top:0 via CSS)
-      dot.style.transform = "translateX(" + (r.left - b.left + r.width / 2 - 11) + "px)";
+      dot.style.width = link.offsetWidth + "px";
+      dot.style.transform = "translateX(" + link.offsetLeft + "px)";
       if (!animate) requestAnimationFrame(function () { dot.style.transition = ""; });
     };
     var active = tabbar.querySelector('a[aria-current="page"]');
