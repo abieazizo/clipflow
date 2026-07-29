@@ -175,7 +175,8 @@
     var placeDot = function (link, animate) {
       var r = link.getBoundingClientRect(), b = tabbar.getBoundingClientRect();
       if (!animate) dot.style.transition = "none";
-      dot.style.transform = "translate(" + (r.left - b.left + r.width / 2 - 2) + "px, 4px)";
+      // 22px indicator bar seated flush at the tab's top edge (top:0 via CSS)
+      dot.style.transform = "translateX(" + (r.left - b.left + r.width / 2 - 11) + "px)";
       if (!animate) requestAnimationFrame(function () { dot.style.transition = ""; });
     };
     var active = tabbar.querySelector('a[aria-current="page"]');
