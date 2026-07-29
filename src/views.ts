@@ -398,8 +398,7 @@ export function landingPage(): string {
 
   const body = `
 <div class="land-atmos" aria-hidden="true" data-atmos>
-  <span class="aurora aurora-1" data-aurora="1"></span>
-  <span class="aurora aurora-2" data-aurora="2"></span>
+  <span class="land-grid"></span>
   <span class="land-grain"></span>
 </div>
 <div class="wrap">
@@ -409,11 +408,12 @@ export function landingPage(): string {
   </nav>
 
   <header class="land-hero" id="main">
-    <p class="eyebrow" data-rise style="--i:0">For Whatnot sellers</p>
-    <h1 class="display" data-rise style="--i:1">Clip it<span class="period">.</span><br>It posts <span class="grad">itself</span><span class="period">.</span></h1>
+    <p class="eyebrow" data-rise style="--i:0"><span class="eyebrow-dot"></span>For Whatnot sellers</p>
+    <h1 class="display" data-rise style="--i:1">Clip it<span class="period">.</span><br>It posts <span class="hl">itself</span><span class="period">.</span></h1>
     <p class="hero-sub" data-rise style="--i:2">Every clip from your live, posted to Instagram Reels + TikTok. Automatic.</p>
 
     <div class="proof-unit" id="proof-unit">
+      <span class="hero-spot" aria-hidden="true"></span>
       <div class="stage-glow" aria-hidden="true"></div>
       <figure class="clip-card rise-hero" data-rise style="--i:3">
         <video src="/demo/live-clip.mp4" poster="/demo/live-clip-poster.webp" preload="metadata" muted playsinline loop autoplay data-clip-video></video>
