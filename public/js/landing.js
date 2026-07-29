@@ -1,10 +1,52 @@
-/* landing.js — dock CTA, autoplaying demo clip with offscreen pause,
-   and the live handle check that turns on a stage panel. */
+/* landing.js — landing atmosphere/motion + dock, autoplaying demo clip, and the
+   live handle check. The server-talking handle-check fetch is unchanged; the
+   additions (nav frost, aurora parallax, magnetic CTA) are all reduced-motion
+   gated and purely visual. */
 (function () {
   "use strict";
-  var $ = CF.$;
+  var $ = CF.$, $$ = CF.$$;
 
-  // sticky dock: appears after the hero CTA scrolls past, hides at the final CTA
+  // --- nav: frost/translucent once the page scrolls ---------------------------
+  var nav = $("[data-land-nav]");
+  if (nav) {
+    var syncNav = function () { nav.classList.toggle("is-stuck", window.scrollY > 8); };
+    syncNav();
+    window.addEventListener("scroll", syncNav, { passive: true });
+  }
+
+  // --- aurora parallax: the two blooms drift as you scroll (rMotion-gated) -----
+  if (!CF.reduced) {
+    var auroras = $$("[data-aurora]");
+    if (auroras.length) {
+      var ticking = false;
+      var moveAuroras = function () {
+        var y = window.scrollY;
+        auroras.forEach(function (a) {
+          var depth = a.getAttribute("data-aurora") === "1" ? 0.06 : -0.09;
+          a.style.transform = "translate3d(0," + (y * depth).toFixed(1) + "px,0)";
+        });
+        ticking = false;
+      };
+      window.addEventListener("scroll", function () {
+        if (!ticking) { ticking = true; requestAnimationFrame(moveAuroras); }
+      }, { passive: true });
+    }
+
+    // --- magnetic CTA: primary buttons ease toward the pointer (fine pointers) -
+    if (window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+      $$(".btn:not(.btn-quiet)").forEach(function (btn) {
+        btn.addEventListener("pointermove", function (e) {
+          var r = btn.getBoundingClientRect();
+          var mx = (e.clientX - r.left - r.width / 2) / r.width;
+          var my = (e.clientY - r.top - r.height / 2) / r.height;
+          btn.style.transform = "translate(" + (mx * 6).toFixed(1) + "px," + (my * 5 - 2).toFixed(1) + "px)";
+        });
+        btn.addEventListener("pointerleave", function () { btn.style.transform = ""; });
+      });
+    }
+  }
+
+  // --- sticky dock: appears after the hero CTA scrolls past, hides at final CTA
   var dock = $("[data-dock]");
   var heroCta = $(".land-cta");
   var finalCta = $(".land-final");

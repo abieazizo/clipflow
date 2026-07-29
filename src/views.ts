@@ -257,6 +257,8 @@ interface DocOpts {
   noindex?: boolean;
   /** stage-dominant page (404, goodbye): dark body + dark theme-color */
   stage?: boolean;
+  /** extra page-scoped stylesheets loaded after system.css (landing only) */
+  styles?: string[];
 }
 
 function doc(title: string, body: string, o: DocOpts = {}): string {
@@ -282,6 +284,7 @@ ${o.csrf ? `<meta name="cf-csrf" content="${esc(o.csrf)}">` : ""}
 <link rel="preload" href="/fonts/Geist-600.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/GeistMono-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/system.css?v=${ASSET_VER}">
+${(o.styles ?? []).map((s) => `<link rel="stylesheet" href="${s}?v=${ASSET_VER}">`).join("\n")}
 <noscript><style>[data-rise],.late-rise{opacity:1 !important;transform:none !important}.will-print .receipt-paper,.will-print .receipt-line,.will-print .receipt-head,.will-print .receipt-total,.will-print .receipt-code{opacity:1 !important;transform:none !important}</style></noscript>
 </head>
 <body${bodyClass ? ` class="${bodyClass}"` : ""}>
@@ -394,15 +397,20 @@ export function landingPage(): string {
   });
 
   const body = `
+<div class="land-atmos" aria-hidden="true" data-atmos>
+  <span class="aurora aurora-1" data-aurora="1"></span>
+  <span class="aurora aurora-2" data-aurora="2"></span>
+  <span class="land-grain"></span>
+</div>
 <div class="wrap">
-  <nav class="land-nav">
+  <nav class="land-nav" data-land-nav>
     <a class="wordmark" href="/"><span class="wordmark-text">ClipFlow<span class="period">.</span></span></a>
     <a class="btn btn-quiet btn-small" href="/login">Log in</a>
   </nav>
 
   <header class="land-hero" id="main">
     <p class="eyebrow" data-rise style="--i:0">For Whatnot sellers</p>
-    <h1 class="display" data-rise style="--i:1">Clip it<span class="period">.</span><br>It posts itself<span class="period">.</span></h1>
+    <h1 class="display" data-rise style="--i:1">Clip it<span class="period">.</span><br>It posts <span class="grad">itself</span><span class="period">.</span></h1>
     <p class="hero-sub" data-rise style="--i:2">Every clip from your live, posted to Instagram Reels + TikTok. Automatic.</p>
 
     <div class="proof-unit" id="proof-unit">
@@ -426,7 +434,7 @@ export function landingPage(): string {
   </header>
 
   <section class="land-section" aria-label="Check your handle">
-    <div class="card handle-check-card">
+    <div class="card handle-check-card" data-rise>
       <h2 class="display">See it with your clips<span class="period">.</span></h2>
       <form class="handle-check-form" data-handle-check>
         <label class="field">
@@ -443,14 +451,14 @@ export function landingPage(): string {
 
   <section class="land-section" aria-label="How it works">
     <div class="steps-list">
-      <div class="step-line"><span class="t">9:41</span><div><p class="what">You clip on Whatnot</p><p class="how">The button you already use.</p></div></div>
-      <div class="step-line"><span class="t">9:41</span><div><p class="what">We catch it</p><p class="how">Watching your public profile.</p></div></div>
-      <div class="step-line"><span class="t">9:42</span><div><p class="what">It&rsquo;s out</p><p class="how">Reels + TikTok posted, captioned.</p></div></div>
+      <div class="step-line" data-rise style="--i:0"><span class="t">9:41</span><div><p class="what">You clip on Whatnot</p><p class="how">The button you already use.</p></div></div>
+      <div class="step-line" data-rise style="--i:1"><span class="t">9:41</span><div><p class="what">We catch it</p><p class="how">Watching your public profile.</p></div></div>
+      <div class="step-line" data-rise style="--i:2"><span class="t">9:42</span><div><p class="what">It&rsquo;s out</p><p class="how">Reels + TikTok posted, captioned.</p></div></div>
     </div>
   </section>
 
   <section class="land-section" aria-label="Safety">
-    <div class="safety-card">
+    <div class="safety-card" data-rise>
       <ul>
         <li>${icon("check-circle")}<span>You log in on Instagram&rsquo;s and TikTok&rsquo;s own pages. We never see passwords.</span></li>
         <li>${icon("check-circle")}<span>One permission: publish. No DMs, no followers.</span></li>
@@ -460,26 +468,27 @@ export function landingPage(): string {
   </section>
 
   <section class="land-section" aria-label="Pricing">
-    <div class="pricing-wrap">${pricing}</div>
+    <div class="pricing-wrap" data-rise>${pricing}</div>
   </section>
 
   <section class="land-section" aria-label="Questions">
     <div class="faq-list">
-      <div class="faq-item"><p class="q">Will this get me banned?</p><p class="a">No. Official platform tools &mdash; the route brands use.</p></div>
-      <div class="faq-item"><p class="q">Do TikToks post by themselves?</p><p class="a">Yes. If TikTok&rsquo;s daily limit hits, the clip lands in your drafts &mdash; one tap.</p></div>
-      <div class="faq-item"><p class="q">What do I do during shows?</p><p class="a">Clip. That&rsquo;s it.</p></div>
+      <div class="faq-item" data-rise style="--i:0"><p class="q">Will this get me banned?</p><p class="a">No. Official platform tools &mdash; the route brands use.</p></div>
+      <div class="faq-item" data-rise style="--i:1"><p class="q">Do TikToks post by themselves?</p><p class="a">Yes. If TikTok&rsquo;s daily limit hits, the clip lands in your drafts &mdash; one tap.</p></div>
+      <div class="faq-item" data-rise style="--i:2"><p class="q">What do I do during shows?</p><p class="a">Clip. That&rsquo;s it.</p></div>
     </div>
   </section>
 
   <section class="land-final">
-    <h2 class="display">Your next clip could post itself<span class="period">.</span></h2>
-    <a class="btn" href="/signup">Try it on your next show</a>
+    <span class="land-final-glow" aria-hidden="true"></span>
+    <h2 class="display" data-rise>Your next clip could post <span class="grad">itself</span><span class="period">.</span></h2>
+    <a class="btn" href="/signup" data-rise style="--i:1">Try it on your next show</a>
   </section>
 
   <footer class="land-footer">
     ${wordmark()}
     <nav><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/login">Log in</a></nav>
-    <p>&copy; 2026 ClipFlow &middot; built by a seller, for sellers</p>
+    <p class="land-sig">&copy; 2026 ClipFlow &middot; built by a seller, for sellers</p>
   </footer>
 </div>
 
@@ -487,7 +496,7 @@ export function landingPage(): string {
   <a class="btn" href="/signup">Try it on your next show</a>
 </div>`;
 
-  return doc("ClipFlow — your Whatnot clips post themselves", body, { scripts: ["/js/landing.js"], bodyClass: "washed" });
+  return doc("ClipFlow — your Whatnot clips post themselves", body, { scripts: ["/js/landing.js"], bodyClass: "washed land", styles: ["/css/landing.css"] });
 }
 
 // ---------------------------------------------------------------------------

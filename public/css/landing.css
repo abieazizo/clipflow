@@ -1,0 +1,331 @@
+/* ============================================================================
+   landing.css — LANDING PAGE ONLY. Everything here is scoped under body.land so
+   the app (dashboard, settings, etc.) is untouched. Layers a luminous, layered,
+   alive premium-light system on top of system.css: aurora atmosphere + grain,
+   a spectral accent gradient, glass elevation, and continuous tasteful motion.
+   ========================================================================== */
+
+.land {
+  /* spectral "hot creator" accent family */
+  --grad: linear-gradient(105deg, #FF3B6B 0%, #FF2D8E 46%, #A54BFF 100%);
+  --grad-soft: linear-gradient(105deg, rgba(255,59,107,.16), rgba(165,75,255,.16));
+  --glass: rgba(255, 255, 255, .62);
+  --glass-strong: rgba(255, 255, 255, .78);
+  --glass-border: rgba(255, 255, 255, .9);
+  --hair: rgba(22, 22, 26, .07);
+  --r-hero: 22px;
+  /* directional two-part shadows — a consistent top-light source */
+  --sh-1: 0 1px 2px rgba(22,22,26,.05), 0 10px 24px -8px rgba(22,22,26,.14);
+  --sh-2: 0 2px 6px rgba(22,22,26,.06), 0 24px 48px -14px rgba(22,22,26,.22);
+  --sh-cta: 0 1px 0 rgba(255,255,255,.5) inset, 0 8px 20px -6px rgba(255,45,120,.55), 0 18px 44px -18px rgba(165,75,255,.45);
+  /* a warmer, top-lit luminous canvas (not flat gray) */
+  background:
+    radial-gradient(120% 80% at 50% -6%, #FFFFFF 0%, rgba(255,255,255,0) 42%),
+    linear-gradient(180deg, #FDFCFE 0%, #F5F3F9 60%, #F1EEF6 100%);
+  background-attachment: fixed;
+}
+
+/* ----------------------------------------------------------------------------
+   ATMOSPHERE — two aurora blooms + film grain, fixed behind everything
+---------------------------------------------------------------------------- */
+.land-atmos {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none; overflow: clip;
+  contain: strict;
+}
+/* belt-and-suspenders: no in-flow decorative bleed can widen the page */
+.land .land-hero, .land .land-final, .land .proof-unit { overflow-x: clip; }
+.land .wrap, .land .dock { position: relative; z-index: 1; }
+.land-atmos .aurora {
+  position: absolute; display: block;
+  width: 78vw; height: 78vw; max-width: 720px; max-height: 720px;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: .9;
+  will-change: transform;
+}
+.land-atmos .aurora-1 {
+  top: -16vh; right: -18vw;
+  background: radial-gradient(closest-side, rgba(255,45,120,.42), rgba(255,90,150,.16) 55%, transparent 72%);
+}
+.land-atmos .aurora-2 {
+  bottom: -14vh; left: -20vw;
+  background: radial-gradient(closest-side, rgba(140,90,255,.40), rgba(90,120,255,.16) 55%, transparent 72%);
+}
+.land-grain {
+  position: absolute; inset: -50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: .045;
+  mix-blend-mode: multiply;
+}
+
+/* ----------------------------------------------------------------------------
+   TYPE — spectral gradient on the accent period + one hero word
+---------------------------------------------------------------------------- */
+.land .period,
+.land .grad {
+  background: var(--grad);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.land .land-hero h1 {
+  letter-spacing: -.055em;
+  text-shadow: 0 1px 0 rgba(255,255,255,.6);
+}
+.land .land-hero .hero-sub { color: var(--sub); font-size: 18px; }
+.land .eyebrow {
+  display: inline-block;
+  color: #A03; background: var(--grad);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  opacity: .92;
+}
+
+/* ----------------------------------------------------------------------------
+   NAV — frosted, translucent on scroll
+---------------------------------------------------------------------------- */
+.land .land-nav {
+  position: sticky; top: 0; z-index: 40;
+  margin-inline: calc(-1 * var(--s-3)); padding-inline: var(--s-3);
+  transition: background-color .3s var(--swift), box-shadow .3s var(--swift), backdrop-filter .3s;
+  border-radius: 0 0 var(--r-l) var(--r-l);
+}
+.land .land-nav.is-stuck {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: saturate(1.6) blur(18px); backdrop-filter: saturate(1.6) blur(18px);
+  box-shadow: 0 1px 0 var(--hair), 0 10px 24px -18px rgba(22,22,26,.4);
+}
+
+/* ----------------------------------------------------------------------------
+   BUTTONS — gradient capsule, sheen, colored ambient shadow
+---------------------------------------------------------------------------- */
+.land .btn:not(.btn-quiet) {
+  position: relative; overflow: hidden;
+  background: var(--grad); background-size: 140% 140%;
+  border-radius: var(--r-full);
+  box-shadow: var(--sh-cta);
+  animation: land-grad-drift 8s ease-in-out infinite;
+}
+/* slow continuous sheen sweep */
+.land .btn:not(.btn-quiet)::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.45), transparent);
+  transform: skewX(-18deg);
+  animation: land-sheen 5.5s ease-in-out infinite;
+}
+@keyframes land-grad-drift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes land-sheen { 0% { left: -60%; } 26%, 100% { left: 130%; } }
+.land .btn:not(.btn-quiet):active { transform: scale(.965); }
+@media (hover: hover) {
+  .land .btn:not(.btn-quiet) { transition: transform .18s var(--spring), box-shadow .18s var(--swift), filter .18s; }
+  .land .btn:not(.btn-quiet):hover { transform: translateY(-2px); filter: saturate(1.08) brightness(1.03); box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 12px 26px -6px rgba(255,45,120,.6), 0 26px 56px -20px rgba(165,75,255,.5); }
+}
+/* quiet button → frosted glass, not flat fill */
+.land .btn-quiet {
+  background: var(--glass); color: var(--ink);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  box-shadow: var(--sh-1);
+}
+.land .btn-quiet:active { transform: scale(.965); background: var(--glass-strong); }
+
+/* ----------------------------------------------------------------------------
+   HERO CLIP CARD — a floating scene: bezel, spectral bloom, reflection, breathe
+---------------------------------------------------------------------------- */
+.land .proof-unit { max-width: 340px; }
+.land .stage-glow {
+  width: min(420px, 122%); aspect-ratio: 1;
+  top: 34%;
+  background: radial-gradient(closest-side, rgba(255,45,120,.30), rgba(165,75,255,.16) 52%, transparent 72%);
+  filter: blur(14px);
+  animation: land-bloom 7s ease-in-out infinite;
+}
+@keyframes land-bloom { 0%,100% { opacity: .85; transform: translate(-52%, -50%) scale(1); } 50% { opacity: 1; transform: translate(-52%, -50%) scale(1.08); } }
+.land .clip-card {
+  border: 0;
+  border-radius: var(--r-hero);
+  padding: 6px; background: #fff;
+  box-shadow:
+    0 0 0 1px var(--hair),
+    0 2px 4px rgba(22,22,26,.06),
+    0 30px 60px -22px rgba(22,22,26,.34),
+    0 40px 90px -30px rgba(165,75,255,.28);
+  animation: land-float 6.5s ease-in-out infinite;
+}
+.land .clip-card video { border-radius: calc(var(--r-hero) - 6px); }
+/* soft floor reflection */
+.land .proof-unit .clip-card::after {
+  content: ""; position: absolute; left: 12%; right: 12%; bottom: -26px; height: 40px;
+  background: radial-gradient(60% 100% at 50% 0, rgba(165,75,255,.28), transparent 70%);
+  filter: blur(10px); z-index: -1;
+}
+@keyframes land-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+.land .clip-chip {
+  background: rgba(20,18,28,.42);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4); backdrop-filter: blur(10px) saturate(1.4);
+  border: 1px solid rgba(255,255,255,.14);
+}
+.land .clip-card .dot-live { background: #fff; box-shadow: 0 0 0 0 rgba(255,255,255,.9); }
+.land .clip-card .dot-live::after { border-color: rgba(255,255,255,.85); }
+
+/* ----------------------------------------------------------------------------
+   RECEIPT / LEDGER — glass live-activity object with a print shimmer
+---------------------------------------------------------------------------- */
+.land .receipt {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5); backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-l);
+  box-shadow: var(--sh-2);
+}
+.land .proof-unit .will-print { margin-top: calc(-1 * var(--s-5)); }
+.land .receipt-head { color: var(--faint); box-shadow: inset 0 -1px 0 var(--hair); }
+.land .receipt-line + .receipt-line { box-shadow: inset 0 1px 0 var(--hair); }
+.land .receipt .status-word.sw-ok, .land .receipt .sw-auto { color: #C21F5B; }
+/* one-shot shimmer as lines print in */
+.land .will-print.is-printing .receipt::before {
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,.5) 48%, transparent);
+  transform: translateY(-100%);
+  animation: land-scan 1.1s var(--swift) .2s 1;
+}
+@keyframes land-scan { to { transform: translateY(100%); } }
+
+/* pricing total — the conversion payoff beat */
+.land .pricing-wrap .receipt-total { padding-top: var(--s-4); padding-bottom: var(--s-4); }
+.land .pricing-wrap .receipt-total .amount {
+  font-size: 30px; letter-spacing: -.03em;
+  background: var(--grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+}
+.land .pricing-wrap .receipt-total .amount::after { display: none; }
+.land .pricing-wrap .receipt {
+  box-shadow: var(--sh-2), 0 30px 70px -30px rgba(255,45,120,.35);
+}
+
+/* ----------------------------------------------------------------------------
+   SECTION CARDS — solid premium with inner top highlight
+---------------------------------------------------------------------------- */
+.land .card, .land .safety-card, .land .handle-check-card {
+  background: var(--surface);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-l);
+  box-shadow: var(--sh-1), inset 0 1px 0 rgba(255,255,255,.9);
+}
+.land .land-section > h2, .land .land-hero h1, .land .land-final h2 { position: relative; }
+
+/* ----------------------------------------------------------------------------
+   HANDLE-CHECK — premium input + result
+---------------------------------------------------------------------------- */
+.land .field-input {
+  background: rgba(255,255,255,.7);
+  border: 1px solid var(--border-strong);
+  box-shadow: inset 0 1px 2px rgba(22,22,26,.05);
+}
+.land .field-input:focus { border-color: transparent; box-shadow: 0 0 0 2.5px rgba(255,45,120,.4), inset 0 1px 2px rgba(22,22,26,.05); }
+.land .field-prefix { color: #C21F5B; }
+.land .handle-float {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5); backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-l);
+  box-shadow: var(--sh-2);
+  padding: var(--s-4);
+}
+.land .handle-profile img { box-shadow: 0 0 0 1px var(--hair), 0 6px 14px -6px rgba(22,22,26,.4); }
+
+/* ----------------------------------------------------------------------------
+   HOW IT WORKS — timeline rail + refined time chips
+---------------------------------------------------------------------------- */
+.land .steps-list { position: relative; }
+.land .steps-list::before {
+  content: ""; position: absolute; left: 21px; top: 12px; bottom: 12px; width: 2px;
+  background: linear-gradient(180deg, rgba(255,45,120,.5), rgba(165,75,255,.35), transparent);
+  border-radius: 2px;
+}
+.land .step-line { position: relative; align-items: center; grid-template-columns: 44px 1fr; }
+.land .step-line .t {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 24px; margin: 0;
+  background: var(--surface); border: 1px solid var(--hair);
+  border-radius: var(--r-full);
+  box-shadow: var(--sh-1);
+  color: #C21F5B; font-size: 11px;
+}
+.land .step-line .what { font-weight: 600; letter-spacing: -.01em; }
+
+/* ----------------------------------------------------------------------------
+   SAFETY — glass card, tinted checks
+---------------------------------------------------------------------------- */
+.land .safety-card li .icon { color: #C21F5B; filter: drop-shadow(0 1px 4px rgba(255,45,120,.3)); }
+
+/* ----------------------------------------------------------------------------
+   FAQ — hairline separators, real structure
+---------------------------------------------------------------------------- */
+.land .faq-list { gap: 0; border-radius: var(--r-l); overflow: hidden; background: var(--surface); border: 1px solid var(--hair); box-shadow: var(--sh-1); }
+.land .faq-item { padding: var(--s-4) var(--s-5); }
+.land .faq-item + .faq-item { box-shadow: inset 0 1px 0 var(--hair); }
+.land .faq-item .q { letter-spacing: -.01em; }
+
+/* ----------------------------------------------------------------------------
+   FINAL CTA — luminous moment
+---------------------------------------------------------------------------- */
+.land .land-final { position: relative; overflow: visible; }
+.land .land-final-glow {
+  position: absolute; left: 50%; top: 30%; transform: translate(-50%,-50%);
+  width: min(460px, 94vw); height: 320px; z-index: 0; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(255,45,120,.22), rgba(165,75,255,.16) 50%, transparent 72%);
+  filter: blur(8px);
+}
+.land .land-final h2, .land .land-final .btn { position: relative; z-index: 1; }
+
+/* footer signature — not anonymous gray */
+.land .land-sig { color: var(--sub); font-weight: 500; }
+.land .land-footer { border-top-color: var(--hair); }
+
+/* ----------------------------------------------------------------------------
+   DOCK — frosted glass
+---------------------------------------------------------------------------- */
+.land .dock {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: saturate(1.6) blur(20px); backdrop-filter: saturate(1.6) blur(20px);
+  border-top: 1px solid var(--glass-border);
+  box-shadow: 0 -8px 30px -12px rgba(22,22,26,.25);
+}
+
+/* ----------------------------------------------------------------------------
+   MOTION — spring-eased, direction-aware reveals (upgrades system data-rise)
+---------------------------------------------------------------------------- */
+.land.js [data-rise] { opacity: 0; transform: translateY(22px); }
+.land.js [data-rise].is-in {
+  opacity: 1; transform: none;
+  transition: opacity .6s var(--swift), transform .7s var(--spring);
+  transition-delay: calc(var(--i, 0) * 80ms);
+}
+/* the clip card's continuous float owns its transform, so entrance is opacity-only */
+.land.js [data-rise].rise-hero { transform: none; }
+.land.js [data-rise].rise-hero.is-in { transform: none; transition: opacity .6s var(--swift); }
+
+/* ----------------------------------------------------------------------------
+   DESKTOP — an intentional wide canvas, more air + scale
+---------------------------------------------------------------------------- */
+@media (min-width: 720px) {
+  .land .wrap { width: min(100% - var(--s-6) * 2, 720px); }
+  .land .land-hero { padding: var(--s-8) 0 var(--s-8); }
+  .land .land-hero h1 { font-size: clamp(60px, 7vw, 82px); }
+  .land .land-hero .hero-sub { font-size: 20px; max-width: 30ch; }
+  .land .proof-unit { max-width: 380px; }
+  .land .land-section { padding-top: var(--s-8); }
+  .land-atmos .aurora { max-width: 900px; max-height: 900px; }
+}
+
+/* ----------------------------------------------------------------------------
+   REDUCED MOTION — kill continuous + parallax, keep clean instant states
+---------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .land .btn:not(.btn-quiet) { animation: none; }
+  .land .btn:not(.btn-quiet)::after { display: none; }
+  .land .clip-card, .land .stage-glow { animation: none; }
+  .land .will-print.is-printing .receipt::before { display: none; }
+  .land-atmos .aurora { animation: none; }
+  .land.js [data-rise] { opacity: 1; transform: none; }
+}
