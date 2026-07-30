@@ -1194,11 +1194,15 @@ body.sheet-locked { overflow: hidden; }
 .clip-rail::-webkit-scrollbar { display: none; }
 .railcard {
   flex: 0 0 128px;
+  /* min-width:0 kills the flex automatic-minimum blowup: a long nowrap clip
+     title would otherwise inflate the card to its full text width */
+  min-width: 0; max-width: 128px;
   scroll-snap-align: start;
   text-decoration: none; color: var(--ink);
   display: block;
   transition: transform var(--t-fast) var(--ease-out);
 }
+.railcard-ghost { max-width: 200px; }
 .railcard:active { transform: scale(.97); }
 .railcard-media {
   position: relative; display: block;
