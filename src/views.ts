@@ -1076,6 +1076,35 @@ export function dashboard(
         <button class="howto-btn" type="button" data-sheet-open="clip-demo" style="justify-self:center">${icon("scissors")}See how to clip</button>
       </div>
     </section>`;
+  } else if (extras.onAir) {
+    // THE SIGNATURE MOMENT — the live console. The desk is armed and watching:
+    // breathing ON AIR badge, platform lanes for the seller's real connections,
+    // and a capture choreography stage that plays when "Check for clips"
+    // actually finds one (home.js flips .is-capturing before reloading).
+    const failed = extras.stats?.failed ?? 0;
+    hero = `
+    <section class="onair-console" data-onair-console data-rise style="--i:1">
+      <div class="oc-head">
+        <span class="oc-badge"><span class="oc-dot"></span>ON AIR</span>
+        ${extras.lastCheckedAt ? `<span class="oc-since mono">checked <span data-check-tick data-ts="${esc(extras.lastCheckedAt)}">${esc(relShort(extras.lastCheckedAt))}</span> ago</span>` : ""}
+      </div>
+      <p class="oc-line display">Desk armed<span class="period">.</span><br>Clip when it&rsquo;s hot<span class="period">.</span></p>
+      <p class="oc-sub">Tap Clip on Whatnot and make it <strong>public</strong> &mdash; it&rsquo;s out minutes later.</p>
+      <div class="oc-lanes">
+        ${acct.instagram ? `<span class="oc-lane" data-lane="ig">${icon("instagram")}<span class="oc-lane-name">Reels</span><span class="oc-armed mono">Armed</span></span>` : ""}
+        ${acct.tiktok ? `<span class="oc-lane" data-lane="tt">${icon("tiktok")}<span class="oc-lane-name">TikTok</span><span class="oc-armed mono">Armed</span></span>` : ""}
+      </div>
+      <div class="oc-stage" aria-hidden="true">
+        <span class="oc-ghost">${icon("clip")}</span>
+        <span class="oc-streak oc-streak-l"></span>
+        <span class="oc-streak oc-streak-r"></span>
+        <p class="oc-receipt mono">CLIPPED &middot; POSTING<span class="live-cursor"></span></p>
+      </div>
+      <div class="oc-foot">
+        <button class="btn-text" type="button" data-check-now data-loading-text="Checking&hellip;">Check for clips now</button>
+      </div>
+    </section>
+    ${failed > 0 ? `<p class="fail-row" data-rise style="--i:2">${failed} post${failed === 1 ? "" : "s"} didn&rsquo;t go out &mdash; <a href="/history?filter=failed">Fix in Clips</a></p>` : ""}`;
   } else {
     // THE LIVE DESK hero — an editorial status block with a hero numeral,
     // not a card. States what's happening now, in big type.
@@ -1130,13 +1159,12 @@ export function dashboard(
       </div>
     </section>`;
 
-  const liveChip = !connected
+  // While ON AIR the console below carries the live signal — no duplicate chip.
+  const liveChip = !connected || extras.onAir
     ? ""
-    : extras.onAir
-      ? `<span class="live-chip is-onair"><span class="dot dot-live"></span>ON AIR &mdash; watching for clips</span>`
-      : acct.enabled
-        ? `<span class="live-chip"><span class="dot dot-live"></span>Watching for your next live</span>`
-        : `<span class="live-chip is-off"><span class="dot dot-off"></span>Posting paused</span>`;
+    : acct.enabled
+      ? `<span class="live-chip"><span class="dot dot-live"></span>Watching for your next live</span>`
+      : `<span class="live-chip is-off"><span class="dot dot-off"></span>Posting paused</span>`;
   const hello = celebrate || !uname ? "" : `
     <header class="desk-head" data-desk-head data-rise style="--i:0">
       <span class="hello-pfp" data-hello-pfp>${esc(uname.charAt(0).toUpperCase())}</span>

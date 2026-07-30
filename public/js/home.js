@@ -68,7 +68,9 @@
     }
   }
 
-  // "Check for clips now"
+  // "Check for clips now" — when a clip is really found while ON AIR, play the
+  // capture choreography on the live console (clip → lanes → printed receipt)
+  // before reloading. Reduced-motion goes straight to the reload.
   var check = $("[data-check-now]");
   if (check) check.addEventListener("click", function () {
     var label = check.textContent;
@@ -78,7 +80,15 @@
       check.classList.remove("is-loading");
       check.textContent = label;
       if (r.message) CF.toast(r.message, { err: !!(r.code && ["paused", "no_username", "locked", "no_connection"].indexOf(r.code) >= 0), ms: 5000 });
-      if (r.code === "found") setTimeout(function () { location.reload(); }, 2500);
+      if (r.code === "found") {
+        var consoleEl = $("[data-onair-console]");
+        if (consoleEl && !CF.reduced) {
+          consoleEl.classList.add("is-capturing");
+          setTimeout(function () { location.reload(); }, 2600);
+        } else {
+          setTimeout(function () { location.reload(); }, 2500);
+        }
+      }
       if (r.code === "locked") setTimeout(function () { location.href = "/billing"; }, 1800);
     });
   });
