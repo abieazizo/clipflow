@@ -621,12 +621,22 @@ app.get("/dashboard", async (req, res) => {
     } catch (e) { console.error(`[billing] confirm on return failed: ${(e as Error).message}`); }
   }
   const clips = await recentClips(acct);
+  const extras = await dashboardExtras(acct);
+  // Owner preview (admin-only, presentation-only): lets the operator SEE the
+  // conditional showpiece states on demand — /dashboard?preview=onair shows
+  // the live console, ?preview=capture also auto-plays the clip-capture
+  // choreography (home.js), ?preview=nudge shows the publish-radar banner.
+  if (acct.isAdmin) {
+    const preview = String(q.preview ?? "");
+    if (preview === "onair" || preview === "capture") { extras.onAir = true; extras.publishNudge = false; }
+    if (preview === "nudge") { extras.publishNudge = true; extras.onAir = false; }
+  }
   res.send(dashboard(
     acct,
     { metaConfigured: settings.zernioConfigured, tiktokConfigured: settings.zernioConfigured },
     clips,
     { connected: q.connected, disconnected: q.disconnected, partial: q.partial, error: q.error, saved: q.saved, onboarded: q.onboarded, billing: q.billing },
-    await dashboardExtras(acct)
+    extras
   ));
 });
 

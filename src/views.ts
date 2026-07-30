@@ -1091,8 +1091,8 @@ export function dashboard(
       <p class="oc-line display">Desk armed<span class="period">.</span><br>Clip when it&rsquo;s hot<span class="period">.</span></p>
       <p class="oc-sub">Tap Clip on Whatnot and make it <strong>public</strong> &mdash; it&rsquo;s out minutes later.</p>
       <div class="oc-lanes">
-        ${acct.instagram ? `<span class="oc-lane" data-lane="ig">${icon("instagram")}<span class="oc-lane-name">Reels</span><span class="oc-armed mono">Armed</span></span>` : ""}
-        ${acct.tiktok ? `<span class="oc-lane" data-lane="tt">${icon("tiktok")}<span class="oc-lane-name">TikTok</span><span class="oc-armed mono">Armed</span></span>` : ""}
+        ${acct.instagram || (!acct.instagram && !acct.tiktok) ? `<span class="oc-lane" data-lane="ig">${icon("instagram")}<span class="oc-lane-name">Reels</span><span class="oc-armed mono">Armed</span></span>` : ""}
+        ${acct.tiktok || (!acct.instagram && !acct.tiktok) ? `<span class="oc-lane" data-lane="tt">${icon("tiktok")}<span class="oc-lane-name">TikTok</span><span class="oc-armed mono">Armed</span></span>` : ""}
       </div>
       <div class="oc-stage" aria-hidden="true">
         <span class="oc-ghost">${icon("clip")}</span>

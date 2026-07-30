@@ -93,6 +93,21 @@
     });
   });
 
+  // owner preview: ?preview=capture loops the capture choreography so the
+  // operator can watch the signature moment without being live. No reload.
+  if (/[?&]preview=capture\b/.test(location.search)) {
+    var pcEl = $("[data-onair-console]");
+    if (pcEl && !CF.reduced) {
+      var playCapture = function () {
+        pcEl.classList.remove("is-capturing");
+        void pcEl.offsetWidth; // restart the animation
+        pcEl.classList.add("is-capturing");
+      };
+      setTimeout(playCapture, 900);
+      setInterval(playCapture, 5200);
+    }
+  }
+
   // first-post takeover: receipt prints (core), stamp slams, THEN the headline
   // and buttons rise. Mark the milestone once, immediately.
   var takeover = $("[data-celebrate]");
