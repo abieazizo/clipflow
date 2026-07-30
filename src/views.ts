@@ -806,6 +806,7 @@ export function welcomePage(
       <h1 class="display">One thing to remember<span class="period">.</span></h1>
       <p class="wiz-sub">Clips only reach ClipFlow when they&rsquo;re <strong>public</strong>. Here&rsquo;s the whole move:</p>
       <div class="wiz-body card">${clipDemo()}</div>
+      <p class="fine" style="margin-top:var(--s-3)">Forget after a show? ClipFlow notices and emails you a one-tap reminder.</p>
       <div class="wiz-actions">
         <a class="btn" href="/welcome?step=7">Got it</a>
       </div>
@@ -1716,6 +1717,7 @@ export function guidePage(acct: Account, active = true): string {
     </div>
     <div class="faq-list">
       <div class="faq-item"><p class="q">A clip didn&rsquo;t show up?</p><p class="a">Make sure the clip is <strong>public</strong> on Whatnot &mdash; private or saved-only clips are invisible to ClipFlow. Then tap Check on Home.</p></div>
+      <div class="faq-item"><p class="q">What if I forget to make clips public?</p><p class="a">ClipFlow watches your shows. If one ends and your clips stayed private, you get <strong>one</strong> email with a link straight to your Whatnot clips &mdash; flip them public and everything posts on its own.</p></div>
       <div class="faq-item"><p class="q">Will this get me banned?</p><p class="a">No. Posting goes through Instagram&rsquo;s and TikTok&rsquo;s official tools &mdash; the route brands use.</p></div>
       <div class="faq-item"><p class="q">Something else?</p><p class="a"><a href="mailto:${CONTACT_EMAIL}">Email ${esc(SELLER_NAME)}</a>. A real person answers.</p></div>
     </div>`;
@@ -1903,9 +1905,10 @@ export function adminPage(
   };
 
   // ------- sellers table -------
+  const onAirNow = (u: Account) => Boolean(u.lastLiveAt && Date.now() - new Date(u.lastLiveAt).getTime() < 12 * 60_000);
   const userRows = users.map((u) => `
     <tr${u.disabled ? ` class="is-off"` : ""}>
-      <td><span class="cc-who"><span class="cc-ava">${esc((u.whatnotUsername || u.email).charAt(0).toUpperCase())}</span><span class="cc-who-txt"><span class="cc-mail">${esc(u.email)}</span><span class="mono cc-handle">${u.whatnotUsername ? `@${esc(u.whatnotUsername)}` : "no handle"}</span></span></span></td>
+      <td><span class="cc-who"><span class="cc-ava">${esc((u.whatnotUsername || u.email).charAt(0).toUpperCase())}</span><span class="cc-who-txt"><span class="cc-mail">${esc(u.email)}</span><span class="mono cc-handle">${u.whatnotUsername ? `@${esc(u.whatnotUsername)}` : "no handle"}${onAirNow(u) ? ` <span class="cc-onair"><span class="dot dot-live"></span>ON AIR</span>` : u.lastLiveAt ? ` <span class="cc-lastlive">live ${esc(relShort(u.lastLiveAt))}</span>` : ""}</span></span></span></td>
       <td><span class="cc-conns">${u.instagram ? `<i class="cc-pdot is-ig" title="Instagram @${esc(u.instagram.username)}"></i>` : ""}${u.tiktok ? `<i class="cc-pdot is-tt" title="TikTok @${esc(u.tiktok.username)}"></i>` : ""}${!u.instagram && !u.tiktok ? `<span class="fine">—</span>` : ""}</span></td>
       <td class="mono">${u.postCount}</td>
       <td><span class="status-word ${u.subscriptionStatus === "active" ? "sw-ok" : u.subscriptionStatus === "trialing" ? "sw-quiet" : "sw-faint"}">${esc((u.subscriptionStatus ?? u.plan).toUpperCase())}</span></td>

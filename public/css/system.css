@@ -2026,6 +2026,18 @@ body.sheet-locked { overflow: hidden; }
 .cc-who-txt { display: inline-grid; line-height: 1.3; }
 .cc-mail { font-weight: 500; }
 .cc-handle { font-size: 11px; color: var(--ink-3); }
+/* Publish Radar presence in the sellers table */
+.cc-onair {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: .08em;
+  color: #fff; background: var(--grad-flare);
+  padding: 2px 7px; border-radius: var(--r-pill);
+  box-shadow: var(--glow-flare);
+  vertical-align: 1px;
+}
+.cc-onair .dot { width: 5px; height: 5px; background: #fff; }
+.cc-onair .dot::after { border-color: #fff; }
+.cc-lastlive { font-size: 10px; color: var(--ink-3); }
 .cc-conns { display: inline-flex; gap: 5px; }
 
 .cc-events { display: grid; }

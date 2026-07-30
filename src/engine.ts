@@ -304,9 +304,9 @@ export async function checkAccount(acct: Account): Promise<PassSummary | { busy:
 // the "forgot to make it public" failure mode without touching their account.
 // ---------------------------------------------------------------------------
 
-const NUDGE_GRACE_MS = 45 * 60_000;      // clips often land minutes after a show
+const NUDGE_GRACE_MS = Number(process.env.WN_NUDGE_GRACE_MINUTES || 45) * 60_000;  // clips often land minutes after a show
 const NUDGE_STALE_MS = 24 * 3600_000;    // don't nag about shows older than a day
-const NUDGE_MIN_GAP_MS = 20 * 3600_000;  // never more than ~one nudge a day
+const NUDGE_MIN_GAP_MS = Number(process.env.WN_NUDGE_GAP_HOURS || 20) * 3600_000;  // never more than ~one nudge a day
 
 async function watchLive(acct: Account): Promise<void> {
   const uname = acct.whatnotUsername;
@@ -347,7 +347,8 @@ async function watchLive(acct: Account): Promise<void> {
   logEvent(acct.id, "publish_nudge", `@${uname}: show ended, clips still private`);
   log(`@${uname}: show ended with no public clips — sending publish nudge`);
   const dryRun = process.env.WN_DRY_RUN === "1" || process.env.WN_DRY_RUN === "true";
-  if (!dryRun) await sendMail(publishNudgeEmail(acct.email, uname));
+  if (dryRun) log(`@${uname}: [DRY RUN] publish-nudge email suppressed (would mail ${acct.email})`);
+  else await sendMail(publishNudgeEmail(acct.email, uname));
 }
 
 async function onePass(): Promise<void> {
