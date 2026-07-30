@@ -104,7 +104,7 @@
   --accent: var(--flare);
   --accent-press: var(--flare-2);
   --accent-soft: var(--flare-tint);
-  --accent-glow: rgba(255, 59, 78, .22);
+  --accent-glow: rgba(255, 45, 85, .22);
   --shadow-micro: 0 1px 2px rgba(23, 20, 15, .05);
   --shadow-pop: var(--shadow-floating);
   --spring: var(--ease-spring);
@@ -843,7 +843,7 @@ body.sheet-locked { overflow: hidden; }
   font-family: var(--font-mono); font-size: 12.5px;
   padding: var(--s-2) var(--s-4);
   border-radius: var(--r-pill);
-  box-shadow: var(--shadow-floating);
+  box-shadow: inset 0 1px 0 var(--glass-rim), var(--shadow-floating);
   animation: toast-in .38s var(--ease-spring) both;
   max-width: 100%;
   text-align: center;
@@ -1407,7 +1407,7 @@ body.sheet-locked { overflow: hidden; }
   display: block; height: 100%; width: var(--p, 0%);
   border-radius: var(--r-pill);
   background: var(--grad-flare);
-  box-shadow: 0 0 10px rgba(255, 59, 78, .45);
+  box-shadow: 0 0 10px rgba(255, 45, 85, .45);
   transition: width .8s var(--ease-out) .2s;
 }
 .setup-rows { display: grid; }
@@ -2150,7 +2150,7 @@ body.sheet-locked { overflow: hidden; }
 .cc-frow { display: grid; grid-template-columns: 132px minmax(0, 1fr) 40px; gap: var(--s-3); align-items: center; }
 .cc-flabel { font-size: 13px; font-weight: 500; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cc-fbar { height: 10px; border-radius: var(--r-pill); background: var(--sunken); overflow: hidden; display: block; }
-.cc-fbar span { display: block; height: 100%; width: var(--p, 0%); border-radius: var(--r-pill); background: var(--grad-flare); box-shadow: 0 0 8px rgba(255, 59, 78, .35); transition: width .8s var(--ease-out) .2s; }
+.cc-fbar span { display: block; height: 100%; width: var(--p, 0%); border-radius: var(--r-pill); background: var(--grad-flare); box-shadow: 0 0 8px rgba(255, 45, 85, .35); transition: width .8s var(--ease-out) .2s; }
 .cc-fn { font-size: 13px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 
 .cc-split { display: flex; flex-wrap: wrap; gap: var(--s-2); }
@@ -2262,6 +2262,15 @@ body.sheet-locked { overflow: hidden; }
   .cd-public { animation: none; opacity: 1; transform: none; }
   .cd-n1, .cd-n2, .cd-n3 { animation: none; }
   .glyph-spin svg { animation: none; }
+  /* ON AIR console: explicitly inert on its own terms, not just via the
+     blanket kill above. Capture jumps straight to its end state — transient
+     layers (ghost, streaks) hidden, the printed receipt fully visible. */
+  .oc-badge, .oc-dot::after { animation: none; }
+  .oc-dot::after { opacity: 0; }
+  .is-capturing .oc-ghost,
+  .is-capturing .oc-streak-l,
+  .is-capturing .oc-streak-r { animation: none; opacity: 0; }
+  .is-capturing .oc-receipt { animation: none; opacity: 1; transform: none; }
 }
 
 /* ============================================================================
