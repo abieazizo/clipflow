@@ -12,7 +12,7 @@
 import { statSync } from "node:fs";
 import {
   accountState, trialDaysLeft, TRIAL_DAYS,
-  type Account, type PostRow,
+  type Account, type PostRow, type AdminSeries,
 } from "./db.js";
 import { loadAppSettings } from "./appconfig.js";
 import type { ClipRow } from "./engine.js";
@@ -235,7 +235,7 @@ function clipDemo(): string {
     </div>
     <ol class="cd-steps">
       <li><span class="step-num cd-n1">1</span><div><p class="s-label">Tap Clip during your live</p><p class="s-sub">The button you already use.</p></div></li>
-      <li><span class="step-num cd-n2">2</span><div><p class="s-label">Make the clip public</p><p class="s-sub">Private clips are invisible to ClipFlow.</p></div></li>
+      <li><span class="step-num cd-n2">2</span><div><p class="s-label">Flip &ldquo;Make it public&rdquo; &mdash; one tap</p><p class="s-sub">It&rsquo;s right on the clip sheet you&rsquo;re already looking at. Private clips are invisible to ClipFlow.</p></div></li>
       <li><span class="step-num cd-n3">3</span><div><p class="s-label">Done &mdash; it posts itself</p><p class="s-sub">Instagram Reels + TikTok, captioned.</p></div></li>
     </ol>
   </div>`;
@@ -344,6 +344,8 @@ interface ShellOpts {
   noTabs?: boolean;
   /** rail footer identity (desktop sidebar) */
   who?: { name: string; email: string };
+  /** wide desktop column (operator command center) */
+  wide?: boolean;
 }
 
 function shellWho(acct: Account): { name: string; email: string } {
@@ -368,7 +370,7 @@ function appShell(o: ShellOpts): string {
     </div>` : ""}
   </aside>
   <div class="shell-main">
-    <div class="content-col">
+    <div class="content-col${o.wide ? " is-wide" : ""}">
       <header class="appbar">
         <a class="wordmark" href="/dashboard" aria-label="ClipFlow home">${WORDMARK_INNER}</a>
       </header>
@@ -546,7 +548,7 @@ export function authPage(mode: "login" | "signup", error?: string, email?: strin
     </div>
     <div class="card auth-card" data-rise style="--i:2">
       <h2 class="auth-title display">${isSignup ? "Create your account" : "Log in"}</h2>
-      <form method="post" action="/${mode}">
+      <form method="post" action="/${mode}"${isSignup ? ` data-pw-match` : ""}>
         <label class="field">
           <span class="field-label">Email</span>
           <input class="field-input" type="email" name="email" value="${esc(email ?? "")}" autocomplete="email" inputmode="email" required maxlength="254">
@@ -557,8 +559,18 @@ export function authPage(mode: "login" | "signup", error?: string, email?: strin
             <input class="field-input" type="password" name="password" autocomplete="${isSignup ? "new-password" : "current-password"}" required minlength="8" maxlength="200">
             <button type="button" class="field-eye" data-eye aria-label="Show password">${icon("eye")}</button>
           </span>
-          ${errHtml}
+          ${isSignup ? "" : errHtml}
         </label>
+        ${isSignup ? `
+        <label class="field">
+          <span class="field-label">Confirm password</span>
+          <span class="field-wrap">
+            <input class="field-input" type="password" name="password2" autocomplete="new-password" required minlength="8" maxlength="200">
+            <button type="button" class="field-eye" data-eye aria-label="Show password">${icon("eye")}</button>
+          </span>
+          <p class="field-error" data-pw2-err hidden>Those passwords don&rsquo;t match &mdash; retype them.</p>
+          ${errHtml}
+        </label>` : ""}
         <button class="btn btn-block" type="submit" data-loading-text="${isSignup ? "Creating&hellip;" : "Logging in&hellip;"}">${isSignup ? "Create account" : "Log in"}</button>
       </form>
       ${isSignup
@@ -743,9 +755,11 @@ export function welcomePage(
           ? `<p class="connect-done">${icon("check")} @${esc(conn.username || "connected")}</p>
              <p class="sub" style="margin-top:var(--s-3)">Connected. Clips will post here.</p>`
           : s === 3
-            ? `<p class="sub">Opens Instagram&rsquo;s official login. We never see your password.</p>`
+            ? `<p class="sub">Opens Instagram&rsquo;s official login. We never see your password.</p>
+               <p class="fine need-acct" style="margin-top:var(--s-3)">${icon("check-circle")} You&rsquo;ll need your own Instagram account. Don&rsquo;t have one? Make it in the Instagram app first &mdash; takes a minute &mdash; then come back.</p>`
             : `<p class="sub">Opens TikTok&rsquo;s official login. We never see your password.</p>
-               <p class="fine" style="margin-top:var(--s-3)">Posts straight to your TikTok. If TikTok&rsquo;s daily limit hits, it lands in your drafts &mdash; one tap.</p>`}
+               <p class="fine need-acct" style="margin-top:var(--s-3)">${icon("check-circle")} You&rsquo;ll need your own TikTok account. Don&rsquo;t have one? Make it in the TikTok app first, then come back.</p>
+               <p class="fine" style="margin-top:var(--s-2)">Posts straight to your TikTok. If TikTok&rsquo;s daily limit hits, it lands in your drafts &mdash; one tap.</p>`}
       </div>
       <div class="wiz-actions">
         ${conn
@@ -1846,16 +1860,48 @@ export function adminPage(
   stats: { users: number; activeSubs: number; posts7d: number; failures7d: number },
   users: Array<Account & { postCount: number }>,
   events: Array<{ at: string; accountId: string | null; type: string; detail: string | null }>,
-  csrf: string
+  csrf: string,
+  series: AdminSeries
 ): string {
+  // ------- derived, all real numbers -------
+  const activePaying = users.filter((u) => u.subscriptionStatus === "active").length;
+  const mrr = activePaying * 19;
+  const funnel = [
+    { label: "Signed up", n: users.length },
+    { label: "Added Whatnot", n: users.filter((u) => u.whatnotUsername).length },
+    { label: "Connected IG / TikTok", n: users.filter((u) => u.instagram || u.tiktok).length },
+    { label: "Card on file", n: users.filter((u) => u.stripeCustomerId).length },
+    { label: "Posted ≥ 1 clip", n: users.filter((u) => u.postCount > 0).length },
+  ];
+  const fMax = Math.max(1, funnel[0].n);
+
+  // ------- 14-day activity chart (inline SVG, token-colored via CSS) -------
+  const CW = 560, CH = 112, BW = CW / 14;
+  const maxDay = Math.max(1, ...series.days.map((d) => d.posted + d.failed));
+  const chartBars = series.days.map((d, i) => {
+    const ph = Math.round((d.posted / maxDay) * (CH - 10));
+    const fh = Math.round((d.failed / maxDay) * (CH - 10));
+    const x = (i * BW + 5).toFixed(1);
+    const bw = (BW - 10).toFixed(1);
+    return `
+      <rect x="${x}" y="${CH - ph - 1}" width="${bw}" height="${Math.max(ph, d.posted > 0 ? 3 : 1)}" rx="3" class="cc-bar${d.posted === 0 ? " is-zero" : ""}"/>
+      ${fh > 0 ? `<rect x="${x}" y="${CH - ph - fh - 4}" width="${bw}" height="${Math.max(fh, 3)}" rx="2" class="cc-bar-fail"/>` : ""}
+      ${d.signups > 0 ? `<circle cx="${(i * BW + BW / 2).toFixed(1)}" cy="${CH + 10}" r="3" class="cc-dot-signup"/>` : ""}`;
+  }).join("");
+  const dayLabel = (iso: string) => {
+    const d = new Date(iso + "T00:00:00Z");
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  };
+
+  // ------- sellers table -------
   const userRows = users.map((u) => `
-    <tr>
-      <td class="mono">${esc(u.email)}</td>
-      <td class="mono">${u.whatnotUsername ? `@${esc(u.whatnotUsername)}` : "—"}</td>
-      <td>${u.instagram ? "IG " : ""}${u.tiktok ? "TT" : ""}</td>
+    <tr${u.disabled ? ` class="is-off"` : ""}>
+      <td><span class="cc-who"><span class="cc-ava">${esc((u.whatnotUsername || u.email).charAt(0).toUpperCase())}</span><span class="cc-who-txt"><span class="cc-mail">${esc(u.email)}</span><span class="mono cc-handle">${u.whatnotUsername ? `@${esc(u.whatnotUsername)}` : "no handle"}</span></span></span></td>
+      <td><span class="cc-conns">${u.instagram ? `<i class="cc-pdot is-ig" title="Instagram @${esc(u.instagram.username)}"></i>` : ""}${u.tiktok ? `<i class="cc-pdot is-tt" title="TikTok @${esc(u.tiktok.username)}"></i>` : ""}${!u.instagram && !u.tiktok ? `<span class="fine">—</span>` : ""}</span></td>
       <td class="mono">${u.postCount}</td>
-      <td class="mono">${esc(u.subscriptionStatus ?? u.plan)}</td>
-      <td>${u.disabled ? MARK.failed : `<span class="status-word sw-ok">ON</span>`}</td>
+      <td><span class="status-word ${u.subscriptionStatus === "active" ? "sw-ok" : u.subscriptionStatus === "trialing" ? "sw-quiet" : "sw-faint"}">${esc((u.subscriptionStatus ?? u.plan).toUpperCase())}</span></td>
+      <td class="mono">${esc(relShort(u.createdAt))}</td>
+      <td>${u.disabled ? `<span class="status-word sw-err">OFF</span>` : `<span class="status-word sw-ok">ON</span>`}</td>
       <td>${u.id === acct.id ? "" : `
         <form method="post" action="/admin/toggle/${esc(u.id)}"><input type="hidden" name="csrf" value="${esc(csrf)}">
           <button class="retry-btn" type="submit">${u.disabled ? "Enable" : "Disable"}</button>
@@ -1863,34 +1909,75 @@ export function adminPage(
     </tr>`).join("");
 
   const eventRows = events.map((e) => `
-    <tr>
-      <td class="mono">${esc(relShort(e.at))}</td>
-      <td class="mono">${esc(e.type)}</td>
-      <td class="mono">${esc(e.detail ?? "")}</td>
-    </tr>`).join("");
+    <div class="cc-ev">
+      <span class="cc-ev-t mono">${esc(relShort(e.at))}</span>
+      <span class="cc-ev-type mono">${esc(e.type)}</span>
+      <span class="cc-ev-detail mono">${esc(e.detail ?? "")}</span>
+    </div>`).join("");
 
   const content = `
     <section class="page-head" data-rise style="--i:0">
-      <h1 class="display page-title">Operator</h1>
+      <p class="kicker">Operator</p>
+      <h1 class="display page-title">Command center<span class="period">.</span></h1>
     </section>
-    <div class="admin-stats">
-      <div class="card admin-stat card-pad-tight"><p class="n">${stats.users}</p><p class="l">accounts</p></div>
-      <div class="card admin-stat card-pad-tight"><p class="n">${stats.activeSubs}</p><p class="l">paying</p></div>
-      <div class="card admin-stat card-pad-tight"><p class="n">${stats.posts7d}</p><p class="l">posts · 7d</p></div>
-      <div class="card admin-stat card-pad-tight"><p class="n">${stats.failures7d}</p><p class="l">failures · 7d</p></div>
-    </div>
-    <div class="card card-pad-tight admin-table-wrap" style="margin-bottom:var(--s-5)">
-      <table class="admin-table">
-        <thead><tr><th>Email</th><th>Whatnot</th><th>Conn</th><th>Posts</th><th>Plan</th><th>State</th><th></th></tr></thead>
-        <tbody>${userRows}</tbody>
-      </table>
-    </div>
-    <div class="card card-pad-tight admin-table-wrap">
-      <table class="admin-table">
-        <thead><tr><th>When</th><th>Event</th><th>Detail</th></tr></thead>
-        <tbody>${eventRows}</tbody>
-      </table>
-    </div>`;
 
-  return appShell({ title: "Operator", tab: "settings", content, csrf, who: shellWho(acct) });
+    <div class="cc-band" data-rise style="--i:1">
+      <div class="cc-stat"><span class="cc-n mono" data-ticker="${stats.users}">${stats.users}</span><span class="cc-l">accounts</span></div>
+      <div class="cc-stat"><span class="cc-n mono" data-ticker="${stats.activeSubs}">${stats.activeSubs}</span><span class="cc-l">paying + trialing</span><span class="cc-sub mono">est. $${mrr}/mo</span></div>
+      <div class="cc-stat"><span class="cc-n mono" data-ticker="${stats.posts7d}">${stats.posts7d}</span><span class="cc-l">posts &middot; 7d</span></div>
+      <div class="cc-stat${stats.failures7d > 0 ? " is-bad" : ""}"><span class="cc-n mono" data-ticker="${stats.failures7d}">${stats.failures7d}</span><span class="cc-l">failures &middot; 7d</span></div>
+    </div>
+
+    <section class="cc-panel" data-rise style="--i:2">
+      <div class="row-between cc-panel-head">
+        <p class="kicker">Activity &middot; 14 days</p>
+        <p class="cc-legend mono"><i class="lg lg-post"></i>posted <i class="lg lg-fail"></i>failed <i class="lg lg-sign"></i>signup</p>
+      </div>
+      <svg class="cc-chart" viewBox="0 0 ${CW} ${CH + 18}" preserveAspectRatio="none" role="img" aria-label="Posts per day over the last 14 days">${chartBars}</svg>
+      <div class="cc-axis mono"><span>${esc(dayLabel(series.days[0].day))}</span><span>peak ${maxDay}/day</span><span>${esc(dayLabel(series.days[13].day))}</span></div>
+    </section>
+
+    <div class="cc-duo">
+      <section class="cc-panel" data-rise style="--i:3">
+        <p class="kicker">Funnel</p>
+        <div class="cc-funnel">
+          ${funnel.map((f) => `
+          <div class="cc-frow">
+            <span class="cc-flabel">${f.label}</span>
+            <span class="cc-fbar"><span style="--p:${Math.round((f.n / fMax) * 100)}%"></span></span>
+            <span class="cc-fn mono">${f.n}</span>
+          </div>`).join("")}
+        </div>
+      </section>
+      <section class="cc-panel" data-rise style="--i:4">
+        <p class="kicker">Platforms &middot; 7d</p>
+        <div class="cc-split">
+          <span class="cc-chip"><i class="cc-pdot is-ig"></i>Reels <b class="mono">${series.igPosts7d}</b></span>
+          <span class="cc-chip"><i class="cc-pdot is-tt"></i>TikTok <b class="mono">${series.ttPosts7d}</b></span>
+          <span class="cc-chip"><i class="cc-pdot is-draft"></i>TT drafts <b class="mono">${series.drafts7d}</b></span>
+        </div>
+        <p class="cc-zern ${series.orphans > 0 ? "is-warn" : ""}">
+          ${series.orphans > 0
+            ? `${icon("alert")} ${series.orphans} orphaned Zernio account${series.orphans === 1 ? "" : "s"} &mdash; reaper is retrying removal`
+            : `${icon("check-circle")} Zernio clean &mdash; no orphaned accounts billing us`}
+        </p>
+      </section>
+    </div>
+
+    <section class="cc-panel" data-rise style="--i:5">
+      <p class="kicker">Sellers &middot; ${users.length}</p>
+      <div class="admin-table-wrap">
+        <table class="admin-table cc-table">
+          <thead><tr><th>Seller</th><th>Conn</th><th>Posts</th><th>Plan</th><th>Joined</th><th>State</th><th></th></tr></thead>
+          <tbody>${userRows}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="cc-panel" data-rise style="--i:6">
+      <p class="kicker">Event log</p>
+      <div class="cc-events">${eventRows}</div>
+    </section>`;
+
+  return appShell({ title: "Operator", tab: "settings", content, csrf, who: shellWho(acct), wide: true });
 }

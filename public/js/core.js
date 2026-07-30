@@ -220,8 +220,31 @@
     });
   });
 
+  // --- confirm-password match (signup): both fields must agree ------------------
+  $$("form[data-pw-match]").forEach(function (f) {
+    var p1 = f.querySelector('input[name="password"]');
+    var p2 = f.querySelector('input[name="password2"]');
+    var err = f.querySelector("[data-pw2-err]");
+    if (!p1 || !p2) return;
+    var clear = function () {
+      if (err) err.hidden = true;
+      p2.classList.remove("has-error");
+    };
+    p1.addEventListener("input", clear);
+    p2.addEventListener("input", clear);
+    f.addEventListener("submit", function (e) {
+      if (p1.value !== p2.value) {
+        e.preventDefault();
+        if (err) err.hidden = false;
+        p2.classList.add("has-error");
+        p2.focus();
+      }
+    });
+  });
+
   // --- loading buttons on real form submits -------------------------------------
   document.addEventListener("submit", function (e) {
+    if (e.defaultPrevented) return;
     var form = e.target;
     if (form.hasAttribute("data-js-form")) return;
     var btn = form.querySelector("[data-loading-text]");

@@ -498,3 +498,54 @@ export function adminUserList(): Array<Account & { postCount: number }> {
       postCount: (d.prepare("SELECT COUNT(*) AS n FROM posts WHERE accountId = ? AND status = 'posted'").get(r.id) as any).n,
     }));
 }
+
+/** Read-only time series + splits for the operator command center. */
+export interface AdminSeries {
+  /** oldest → newest, exactly 14 entries (UTC day buckets) */
+  days: Array<{ day: string; posted: number; failed: number; signups: number }>;
+  igPosts7d: number;
+  ttPosts7d: number;
+  drafts7d: number;
+  orphans: number;
+}
+
+export function adminSeries(): AdminSeries {
+  const d = getDb();
+  const since14 = new Date(Date.now() - 13 * 86400_000).toISOString().slice(0, 10);
+  const weekAgo = new Date(Date.now() - 7 * 86400_000).toISOString();
+
+  const toMap = (rows: any[]) => {
+    const m = new Map<string, number>();
+    for (const r of rows) m.set(r.day, r.n);
+    return m;
+  };
+  const posted = toMap(d.prepare(
+    "SELECT substr(postedAt,1,10) AS day, COUNT(*) AS n FROM posts WHERE status='posted' AND postedAt >= ? GROUP BY day"
+  ).all(since14) as any[]);
+  const failed = toMap(d.prepare(
+    "SELECT substr(createdAt,1,10) AS day, COUNT(*) AS n FROM posts WHERE status='failed' AND createdAt >= ? GROUP BY day"
+  ).all(since14) as any[]);
+  const signups = toMap(d.prepare(
+    "SELECT substr(createdAt,1,10) AS day, COUNT(*) AS n FROM accounts WHERE deletedAt IS NULL AND createdAt >= ? GROUP BY day"
+  ).all(since14) as any[]);
+
+  const days: AdminSeries["days"] = [];
+  for (let i = 13; i >= 0; i--) {
+    const day = new Date(Date.now() - i * 86400_000).toISOString().slice(0, 10);
+    days.push({
+      day,
+      posted: posted.get(day) ?? 0,
+      failed: failed.get(day) ?? 0,
+      signups: signups.get(day) ?? 0,
+    });
+  }
+
+  const count = (sql: string, ...args: unknown[]) => (d.prepare(sql).get(...args) as any).n as number;
+  return {
+    days,
+    igPosts7d: count("SELECT COUNT(*) AS n FROM posts WHERE status='posted' AND platform='instagram' AND postedAt >= ?", weekAgo),
+    ttPosts7d: count("SELECT COUNT(*) AS n FROM posts WHERE status='posted' AND platform='tiktok' AND postedAt >= ?", weekAgo),
+    drafts7d: count("SELECT COUNT(*) AS n FROM posts WHERE status='posted' AND platform='tiktok' AND via='draft' AND postedAt >= ?", weekAgo),
+    orphans: count("SELECT COUNT(*) AS n FROM zernio_orphans"),
+  };
+}

@@ -34,7 +34,7 @@ import {
   setPassword, verifyCurrentPassword, deleteAccountCascade,
   isActive, accountState, trialDaysLeft, TRIAL_DAYS,
   postStats, postTotals, listPosts, getPostById, updatePost,
-  createToken, consumeToken, peekToken, logEvent, adminStats, adminUserList, recentEvents,
+  createToken, consumeToken, peekToken, logEvent, adminStats, adminUserList, adminSeries, recentEvents,
   enqueueOrphan,
   type Account,
 } from "./db.js";
@@ -1240,7 +1240,7 @@ app.get("/admin", (req, res) => {
   const acct = currentAccount(req);
   if (!acct) return res.redirect("/login");
   if (!acct.isAdmin) return res.status(404).send(errorPage(404)); // invisible
-  res.send(adminPage(acct, adminStats(), adminUserList(), recentEvents(50), csrfToken(acct.id)));
+  res.send(adminPage(acct, adminStats(), adminUserList(), recentEvents(50), csrfToken(acct.id), adminSeries()));
 });
 
 app.post("/admin/toggle/:id", async (req, res) => {
