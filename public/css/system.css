@@ -68,8 +68,8 @@
   --shadow-card: 0 1px 2px rgba(23, 20, 15, .05), 0 12px 32px -10px rgba(23, 20, 15, .12);
   --shadow-floating: 0 10px 44px -12px rgba(23, 20, 15, .20);
   /* the physical-surface pair: whisper inner shadow at the base + light rim on top */
-  --surface-rim: inset 0 1px 0 rgba(255, 255, 255, .70), inset 0 -1px 0 rgba(23, 20, 15, .03);
-  --surface-tone: linear-gradient(180deg, #FFFFFF 0%, #FDFBF7 100%);
+  --surface-rim: inset 0 1.5px 0 rgba(255, 255, 255, .85), inset 0 -1px 0 rgba(23, 20, 15, .05);
+  --surface-tone: linear-gradient(180deg, #FFFFFF 0%, #FBF7EF 100%);
   --glass: rgba(255, 255, 255, .78);
   --glass-line: rgba(23, 20, 15, .08);
   --glass-rim: rgba(255, 255, 255, .55); /* the 1px top edge that catches light */
@@ -113,13 +113,13 @@
   /* grain — SVG turbulence tile, applied app-wide. Must be VISIBLE at phone
      scale: faint grain reads as no grain. */
   --grain-img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
-  --grain-opacity: .06;
+  --grain-opacity: .07;
   --grain-blend: multiply;
 
   /* per-page gradient-mesh hue leans (set on body.page-*) */
-  --mesh-a: rgba(255, 59, 78, .12);      /* primary bloom */
-  --mesh-b: rgba(255, 176, 92, .10);     /* secondary bloom */
-  --mesh-c: rgba(255, 120, 60, .06);     /* low arc */
+  --mesh-a: rgba(255, 45, 85, .17);      /* primary bloom */
+  --mesh-b: rgba(255, 176, 92, .14);     /* secondary bloom */
+  --mesh-c: rgba(255, 120, 60, .09);     /* low arc */
 
   /* iOS */
   --tab-h: 64px;
@@ -224,9 +224,9 @@ body:not(.land)::before {
 }
 /* section hue leans: Home warm-coral (default), Clips golden-editorial,
    Studio playful candy, Settings quiet green-warm */
-body.page-clips { --mesh-a: rgba(247, 144, 9, .11); --mesh-b: rgba(255, 59, 78, .07); --mesh-c: rgba(255, 200, 90, .07); }
-body.page-studio { --mesh-a: rgba(157, 78, 221, .11); --mesh-b: rgba(255, 59, 78, .09); --mesh-c: rgba(37, 205, 240, .06); }
-body.page-settings { --mesh-a: rgba(18, 183, 106, .08); --mesh-b: rgba(255, 176, 92, .07); --mesh-c: rgba(23, 20, 15, .04); }
+body.page-clips { --mesh-a: rgba(247, 144, 9, .16); --mesh-b: rgba(255, 45, 85, .10); --mesh-c: rgba(255, 200, 90, .10); }
+body.page-studio { --mesh-a: rgba(157, 78, 221, .16); --mesh-b: rgba(255, 45, 85, .12); --mesh-c: rgba(37, 205, 240, .09); }
+body.page-settings { --mesh-a: rgba(18, 183, 106, .12); --mesh-b: rgba(255, 176, 92, .10); --mesh-c: rgba(23, 20, 15, .05); }
 @media (prefers-color-scheme: dark) {
   body.page-clips { --mesh-a: rgba(255, 171, 61, .12); --mesh-b: rgba(255, 78, 96, .08); --mesh-c: rgba(255, 200, 90, .06); }
   body.page-studio { --mesh-a: rgba(178, 102, 255, .14); --mesh-b: rgba(255, 78, 96, .10); --mesh-c: rgba(37, 205, 240, .07); }
@@ -694,15 +694,15 @@ textarea.field-input { padding: var(--s-3) var(--s-4); min-height: 96px; resize:
 }
 .tabbar a .icon { width: 22px; height: 22px; transition: transform .3s var(--ease-spring); }
 .tabbar a span { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tabbar a[aria-current="page"] { color: var(--flare); }
+.tabbar a[aria-current="page"] { color: #fff; }
 .tabbar a.tab-pop .icon { animation: tab-pop .3s var(--ease-spring); }
 @keyframes tab-pop { 0% { transform: scale(1); } 50% { transform: scale(1.18); } 100% { transform: scale(1); } }
 .tab-dot {
   position: absolute; top: 5px; bottom: 5px; left: 0;
   /* nested radius: bar 22px − 5px padding = 17px */
   width: 25%; border-radius: 17px;
-  background: var(--flare-tint);
-  box-shadow: inset 0 0 0 1px rgba(255, 59, 78, .16);
+  background: var(--grad-flare);
+  box-shadow: var(--glow-flare), var(--inset-hi);
   transition: transform .38s var(--ease-spring), width .38s var(--ease-spring);
   z-index: 0;
 }
@@ -1316,9 +1316,11 @@ body.sheet-locked { overflow: hidden; }
 .hero-num {
   font-size: clamp(72px, 24vw, 104px);
   font-weight: 600; line-height: .9; letter-spacing: -.04em;
-  color: var(--ink);
+  background: var(--grad-flare);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 2px 0 var(--surface), 0 14px 34px rgba(255, 59, 78, .18);
+  filter: drop-shadow(0 10px 26px rgba(255, 45, 85, .30));
 }
 .hero-stat-side { min-width: 0; }
 .hero-line { font-size: clamp(24px, 6.4vw, 30px); }

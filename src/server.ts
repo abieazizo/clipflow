@@ -415,9 +415,17 @@ app.post("/signup", async (req, res) => {
   res.redirect("/dashboard");
 });
 
+/** Open-redirect guard: only same-site paths survive the login round-trip. */
+function safeNext(v: unknown): string | null {
+  const s = String(v ?? "");
+  if (!s.startsWith("/") || s.startsWith("//") || s.includes(":") || s.includes("\\")) return null;
+  return s;
+}
+
 app.get("/login", (req, res) => {
-  if (currentAccount(req)) return res.redirect("/dashboard");
-  res.send(authPage("login"));
+  const next = safeNext((req.query as Record<string, unknown>).next);
+  if (currentAccount(req)) return res.redirect(next ?? "/dashboard");
+  res.send(authPage("login", undefined, undefined, next ?? undefined));
 });
 
 app.post("/login", async (req, res) => {
@@ -425,10 +433,11 @@ app.post("/login", async (req, res) => {
     return res.status(429).send(authPage("login", "Too many attempts — wait a minute and try again."));
   }
   const loginEmail = String(req.body.email ?? "").trim();
+  const next = safeNext((req.query as Record<string, unknown>).next);
   const acct = await verifyLogin(loginEmail, String(req.body.password ?? ""));
-  if (!acct) return res.status(401).send(authPage("login", "Wrong email or password.", loginEmail));
+  if (!acct) return res.status(401).send(authPage("login", "Wrong email or password.", loginEmail, next ?? undefined));
   setSession(res, acct.id);
-  res.redirect("/dashboard");
+  res.redirect(next ?? "/dashboard");
 });
 
 app.get("/logout", (_req, res) => {
@@ -610,7 +619,7 @@ app.post("/welcome/complete", async (req, res) => {
 
 app.get("/dashboard", async (req, res) => {
   let acct = currentAccount(req);
-  if (!acct) return res.redirect("/login");
+  if (!acct) return res.redirect("/login?next=" + encodeURIComponent(req.originalUrl));
   if (isFreshAccount(acct)) return res.redirect("/welcome");
   const q = req.query as Record<string, string | undefined>;
   // Returning from Stripe Checkout — confirm the upgrade without a webhook.

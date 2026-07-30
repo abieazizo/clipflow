@@ -532,8 +532,9 @@ export function landingPage(): string {
 // AUTH — one card, no marketing repeat
 // ---------------------------------------------------------------------------
 
-export function authPage(mode: "login" | "signup", error?: string, email?: string): string {
+export function authPage(mode: "login" | "signup", error?: string, email?: string, next?: string): string {
   const isSignup = mode === "signup";
+  const action = `/${mode}${!isSignup && next ? `?next=${encodeURIComponent(next)}` : ""}`;
   const errHtml = error
     ? `<p class="field-error" role="alert">${esc(error)}${/already has an account/i.test(error) ? ` <a href="/login">Log in</a>` : ""}</p>`
     : "";
@@ -548,7 +549,7 @@ export function authPage(mode: "login" | "signup", error?: string, email?: strin
     </div>
     <div class="card auth-card" data-rise style="--i:2">
       <h2 class="auth-title display">${isSignup ? "Create your account" : "Log in"}</h2>
-      <form method="post" action="/${mode}"${isSignup ? ` data-pw-match` : ""}>
+      <form method="post" action="${action}"${isSignup ? ` data-pw-match` : ""}>
         <label class="field">
           <span class="field-label">Email</span>
           <input class="field-input" type="email" name="email" value="${esc(email ?? "")}" autocomplete="email" inputmode="email" required maxlength="254">
