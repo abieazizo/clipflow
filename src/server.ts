@@ -34,7 +34,7 @@ import {
   setPassword, verifyCurrentPassword, deleteAccountCascade,
   isActive, accountState, trialDaysLeft, TRIAL_DAYS,
   postStats, postTotals, listPosts, getPostById, updatePost,
-  createToken, consumeToken, peekToken, logEvent, adminStats, adminUserList, adminSeries, recentEvents,
+  createToken, consumeToken, peekToken, logEvent, adminStats, adminUserList, adminSeries, recentEvents, hasPostsSince,
   enqueueOrphan,
   type Account,
 } from "./db.js";
@@ -273,6 +273,15 @@ function dashboardExtras(acct: Account) {
       trialDays: TRIAL_DAYS,
     },
     showVerifyBanner: !acct.emailVerifiedAt && settings.mailConfigured,
+    // Publish Radar: ON AIR chip while the engine sees them live; amber
+    // "clips still private" banner once a show ended with nothing public.
+    onAir: Boolean(acct.lastLiveAt && Date.now() - new Date(acct.lastLiveAt).getTime() < 12 * 60_000),
+    publishNudge: Boolean(
+      acct.lastLiveAt &&
+      Date.now() - new Date(acct.lastLiveAt).getTime() >= 45 * 60_000 &&
+      Date.now() - new Date(acct.lastLiveAt).getTime() < 24 * 3600_000 &&
+      !hasPostsSince(acct.id, acct.lastLiveAt)
+    ),
     // Guided-setup state: powers the 4-step checklist, the one-time
     // "you're all set" collapse, and the one-time first-post celebration.
     setup: {

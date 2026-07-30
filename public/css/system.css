@@ -606,6 +606,15 @@ textarea.field-input { padding: var(--s-3) var(--s-4); min-height: 96px; resize:
 .banner-err { color: var(--err); border-color: var(--err-soft); }
 .banner-ok { color: var(--ok); }
 .banner-info { color: var(--ink-2); }
+/* Publish Radar: post-show "clips still private" — warm amber, one clear link */
+.banner-warn {
+  color: var(--ink);
+  background: var(--warn-tint);
+  border-color: var(--warn-tint);
+}
+.banner-warn > .icon { color: var(--warn); }
+.banner-warn a { font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; }
+.banner-warn a .icon { width: 13px; height: 13px; }
 
 /* ----------------------------------------------------------------------------
    Progress dots (wizard)
@@ -1134,6 +1143,16 @@ body.sheet-locked { overflow: hidden; }
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .live-chip.is-off { color: var(--ink-3); background: var(--sunken); }
+/* ON AIR: the show is happening right now — the chip goes full flare */
+.live-chip.is-onair {
+  color: #fff;
+  background: var(--grad-flare);
+  box-shadow: var(--glow-flare), var(--inset-hi);
+  animation: onair-breathe 2.6s ease-in-out infinite;
+}
+.live-chip.is-onair .dot { background: #fff; }
+.live-chip.is-onair .dot::after { border-color: #fff; }
+@keyframes onair-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
 .desk-head.is-condensed .live-chip { display: none; }
 
 /* the hero — big type + hero numeral on the mesh, no card chrome */

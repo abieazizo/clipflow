@@ -917,6 +917,10 @@ export interface DashboardExtras {
     trialDays: number;
   };
   showVerifyBanner?: boolean;
+  /** Publish Radar: seller is detected ON AIR right now */
+  onAir?: boolean;
+  /** Publish Radar: a show ended and no public clips have appeared */
+  publishNudge?: boolean;
   setup?: {
     captionTouched: boolean;
     hasPosts: boolean;
@@ -975,6 +979,9 @@ export function dashboard(
   if (query.disconnected) banners += `<div class="banner banner-info" role="status">${icon("check-circle")}<span>${query.disconnected === "tiktok" ? "TikTok" : "Instagram"} disconnected. Posting there stopped.</span></div>`;
   if (query.billing === "success") banners += `<div class="banner banner-ok" role="status">${icon("check-circle")}<span>Card added. Posting is unlocked.</span></div>`;
   if (query.error && query.error !== "bad_username") banners += `<div class="banner banner-err" role="alert">${icon("alert")}<span>${esc(decodeURIComponentSafe(query.error))}</span></div>`;
+  if (extras.publishNudge && !setupMode) {
+    banners += `<div class="banner banner-warn" role="status">${icon("scissors")}<span><strong>Your last show&rsquo;s clips are still private.</strong> Flip them public &mdash; one tap each &mdash; and they post on their own. <a href="https://www.whatnot.com/user/${esc(uname)}/clips" target="_blank" rel="noopener">Open my Whatnot clips ${icon("external-link")}</a></span></div>`;
+  }
 
   if (locked && b?.state === "locked" && !setupMode) {
     banners += `<div class="lock-banner">${icon("lock")}<span>Free week ended &middot; <a href="/billing">Add a card to keep posting</a></span></div>`;
@@ -1124,9 +1131,11 @@ export function dashboard(
 
   const liveChip = !connected
     ? ""
-    : acct.enabled
-      ? `<span class="live-chip"><span class="dot dot-live"></span>Watching for your next live</span>`
-      : `<span class="live-chip is-off"><span class="dot dot-off"></span>Posting paused</span>`;
+    : extras.onAir
+      ? `<span class="live-chip is-onair"><span class="dot dot-live"></span>ON AIR &mdash; watching for clips</span>`
+      : acct.enabled
+        ? `<span class="live-chip"><span class="dot dot-live"></span>Watching for your next live</span>`
+        : `<span class="live-chip is-off"><span class="dot dot-off"></span>Posting paused</span>`;
   const hello = celebrate || !uname ? "" : `
     <header class="desk-head" data-desk-head data-rise style="--i:0">
       <span class="hello-pfp" data-hello-pfp>${esc(uname.charAt(0).toUpperCase())}</span>

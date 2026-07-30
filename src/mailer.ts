@@ -104,6 +104,20 @@ export function resetEmail(to: string, url: string): MailInput {
   };
 }
 
+export function publishNudgeEmail(to: string, username: string): MailInput {
+  return {
+    to,
+    subject: "Your clips from today's show are still private",
+    heading: "Nice show — now flip your clips public",
+    body: `ClipFlow watched your live on <b>@${username}</b>, but no public clips showed up afterward. ` +
+      `Clips stay <b>private</b> until you publish them — and private clips can't post to Reels or TikTok. ` +
+      `Open your Whatnot clips and tap <b>Make it public</b> on each one (one tap each). ClipFlow does the rest on its own.`,
+    ctaLabel: "Open my Whatnot clips",
+    ctaUrl: `https://www.whatnot.com/user/${encodeURIComponent(username)}/clips`,
+    footer: "You get at most one of these per show. ClipFlow — your clips post themselves.",
+  };
+}
+
 export function postFailedEmail(to: string, count: number, historyUrl: string): MailInput {
   return {
     to,

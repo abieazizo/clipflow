@@ -53,6 +53,10 @@ export interface Account {
   setupSeenAt: string | null;
   /** the one-time "your first clip is live" celebration has fired */
   firstPostCelebratedAt: string | null;
+  /** rolling stamp while detected ON AIR; last value ≈ when the show ended */
+  lastLiveAt: string | null;
+  /** when the post-show "clips still private" nudge was handled for the latest show */
+  publishNudgeAt: string | null;
 }
 
 export type PostStatus = "pending" | "posted" | "failed";
@@ -109,6 +113,8 @@ function rowToAccount(r: any): Account {
     captionTouchedAt: r.captionTouchedAt ?? null,
     setupSeenAt: r.setupSeenAt ?? null,
     firstPostCelebratedAt: r.firstPostCelebratedAt ?? null,
+    lastLiveAt: r.lastLiveAt ?? null,
+    publishNudgeAt: r.publishNudgeAt ?? null,
   };
 }
 
@@ -234,6 +240,7 @@ const ACCOUNT_COLUMNS = new Set([
   "subscriptionStatus", "disabled", "lastFailureEmailAt", "trialEmailSentAt", "email",
   "postingMode", "lastCheckedAt", "captionPreset",
   "captionTouchedAt", "setupSeenAt", "firstPostCelebratedAt",
+  "lastLiveAt", "publishNudgeAt",
 ]);
 
 /** Patch public fields (settings, platform connections, billing state). */
@@ -473,6 +480,13 @@ export function bumpOrphan(accountId: string, error: string): void {
   getDb().prepare(
     "UPDATE zernio_orphans SET attempts = attempts + 1, lastError = ? WHERE accountId = ?"
   ).run(error.slice(0, 300), accountId);
+}
+
+/** Any posts rows created since `iso`? A post row exists the moment a public
+    clip is discovered — so this answers "did clips go public since the show". */
+export function hasPostsSince(accountId: string, iso: string): boolean {
+  const r = getDb().prepare("SELECT 1 AS x FROM posts WHERE accountId = ? AND createdAt >= ? LIMIT 1").get(accountId, iso);
+  return Boolean(r);
 }
 
 export function recentEvents(limit = 50): Array<{ at: string; accountId: string | null; type: string; detail: string | null }> {

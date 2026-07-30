@@ -158,6 +158,12 @@ function migrate(d: Database.Database): void {
       WHERE id IN (SELECT DISTINCT accountId FROM posts WHERE status = 'posted')
     `).run();
   }
+
+  // Publish Radar: lastLiveAt = rolling stamp while the seller is detected ON
+  // AIR (its last value ≈ when the show ended); publishNudgeAt = when this
+  // show's "your clips are still private" nudge was handled (sent or resolved).
+  ensureColumn(d, "accounts", "lastLiveAt", "TEXT NULL");
+  ensureColumn(d, "accounts", "publishNudgeAt", "TEXT NULL");
 }
 
 /** The stock template new accounts start with — also the migration's "untouched" marker. */

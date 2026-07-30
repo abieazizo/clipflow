@@ -13,17 +13,17 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  listAccounts, isActive, updateAccount, logEvent,
+  listAccounts, isActive, updateAccount, logEvent, hasPostsSince,
   getPost as getPostRow, createPost, updatePost, listPosts,
   listOrphans, removeOrphan, bumpOrphan,
   type Account, type PostRow,
 } from "./db.js";
-import { listClipIds, getClipMeta, type ClipMeta } from "./whatnot.js";
+import { listClipIds, getClipMeta, getProfile, type ClipMeta } from "./whatnot.js";
 import { downloadFile, clipPaths } from "./download.js";
 import { postEverywhere, type PlatformName } from "./poster.js";
 import { getPost as zernioGetPost, disconnectAccount as zernioDisconnect } from "./zernio.js";
 import { loadAppSettings } from "./appconfig.js";
-import { sendMail, postFailedEmail } from "./mailer.js";
+import { sendMail, postFailedEmail, publishNudgeEmail } from "./mailer.js";
 
 const CLIPS_DIR = process.env.WN_CLIPS_DIR || "./clips";
 const POLL_SECONDS = Number(process.env.WN_POLL_SECONDS || 300);
@@ -296,6 +296,60 @@ export async function checkAccount(acct: Account): Promise<PassSummary | { busy:
   return runAccount(acct, { retriesOnly: false });
 }
 
+// ---------------------------------------------------------------------------
+// PUBLISH RADAR — the seller's public profile embeds an isLive flag (no login).
+// The engine watches it: show detected -> rolling lastLiveAt stamp; show ends
+// and no public clips appear within the grace window -> ONE nudge (email +
+// dashboard banner) pointing straight at their Whatnot clips page. This kills
+// the "forgot to make it public" failure mode without touching their account.
+// ---------------------------------------------------------------------------
+
+const NUDGE_GRACE_MS = 45 * 60_000;      // clips often land minutes after a show
+const NUDGE_STALE_MS = 24 * 3600_000;    // don't nag about shows older than a day
+const NUDGE_MIN_GAP_MS = 20 * 3600_000;  // never more than ~one nudge a day
+
+async function watchLive(acct: Account): Promise<void> {
+  const uname = acct.whatnotUsername;
+  if (!uname || (!acct.instagram && !acct.tiktok)) return; // nothing would post anyway
+  let isLive: boolean | null;
+  try {
+    isLive = (await getProfile(uname)).isLive;
+  } catch {
+    return; // WAF hiccup — try again next pass, never clear state on failure
+  }
+  if (isLive === null) return; // page shape changed — fail safe, no false nudges
+
+  const now = Date.now();
+  if (isLive) {
+    const wasRecentlyLive = acct.lastLiveAt && now - new Date(acct.lastLiveAt).getTime() < 2 * POLL_SECONDS * 1000;
+    await updateAccount(acct.id, { lastLiveAt: new Date(now).toISOString() });
+    if (!wasRecentlyLive) {
+      log(`@${uname}: ON AIR`);
+      logEvent(acct.id, "live_start", `@${uname}`);
+    }
+    return;
+  }
+
+  if (!acct.lastLiveAt) return;
+  const endedAgo = now - new Date(acct.lastLiveAt).getTime();
+  if (endedAgo < NUDGE_GRACE_MS || endedAgo > NUDGE_STALE_MS) return;
+  const nudgedAt = acct.publishNudgeAt ? new Date(acct.publishNudgeAt).getTime() : 0;
+  if (nudgedAt > new Date(acct.lastLiveAt).getTime()) return; // this show is handled
+  if (now - nudgedAt < NUDGE_MIN_GAP_MS) return;
+
+  if (hasPostsSince(acct.id, acct.lastLiveAt)) {
+    // clips DID go public — resolve the show quietly
+    await updateAccount(acct.id, { publishNudgeAt: new Date(now).toISOString() });
+    return;
+  }
+
+  await updateAccount(acct.id, { publishNudgeAt: new Date(now).toISOString() });
+  logEvent(acct.id, "publish_nudge", `@${uname}: show ended, clips still private`);
+  log(`@${uname}: show ended with no public clips — sending publish nudge`);
+  const dryRun = process.env.WN_DRY_RUN === "1" || process.env.WN_DRY_RUN === "true";
+  if (!dryRun) await sendMail(publishNudgeEmail(acct.email, uname));
+}
+
 async function onePass(): Promise<void> {
   const stripeConfigured = loadAppSettings().stripeConfigured;
   const candidates = listAccounts().filter((a) => a.whatnotUsername);
@@ -315,6 +369,11 @@ async function onePass(): Promise<void> {
       // retries / in-flight posts) — the exception to manual mode.
       log(`@${acct.whatnotUsername}: manual mode — auto-post skipped (due retries still run)`);
       await runAccount(acct, { retriesOnly: true });
+    }
+    try {
+      await watchLive(acct);
+    } catch (e) {
+      log(`@${acct.whatnotUsername}: live watch error: ${(e as Error).message}`);
     }
   }
 }

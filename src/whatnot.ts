@@ -103,6 +103,24 @@ export interface WhatnotProfile {
   exists: boolean;
   displayName: string | null;
   avatarUrl: string | null;
+  /** true = on air right now; null = couldn't determine from the page */
+  isLive: boolean | null;
+}
+
+/**
+ * The profile page embeds the owner's hydrated user object in escaped JSON.
+ * The owner (and only the owner) carries "canGoLive"; their "isLive" flag
+ * follows within the same object. Verified by hand against live profile HTML:
+ *   \"canGoLive\":true,\"displayName\":\"…\",…,\"isLive\":false,\"isVerifiedS…
+ * Listing tiles also carry isLive (always false when not live) — anchoring on
+ * canGoLive keeps us on the owner's flag, not a listing's.
+ */
+function parseIsLive(html: string): boolean | null {
+  const anchor = html.search(/\\?"canGoLive\\?":(?:true|false)/);
+  if (anchor === -1) return null;
+  const window = html.slice(anchor, anchor + 800);
+  const m = window.match(/\\?"isLive\\?":(true|false)/);
+  return m ? m[1] === "true" : null;
 }
 
 /**
@@ -116,7 +134,7 @@ export async function getProfile(username: string): Promise<WhatnotProfile> {
   try {
     html = await getText(url);
   } catch (e) {
-    if (/HTTP 404/.test((e as Error).message)) return { exists: false, displayName: null, avatarUrl: null };
+    if (/HTTP 404/.test((e as Error).message)) return { exists: false, displayName: null, avatarUrl: null, isLive: null };
     throw e; // 403/timeout etc. — caller treats as "couldn't check", not "fake"
   }
   const og = (prop: string): string | null => {
@@ -134,6 +152,7 @@ export async function getProfile(username: string): Promise<WhatnotProfile> {
     exists: true,
     displayName: displayName || null,
     avatarUrl: avatarUrl && /^https:\/\/[a-z0-9.-]*whatnot\.com\//i.test(avatarUrl) ? avatarUrl : null,
+    isLive: parseIsLive(html),
   };
 }
 
