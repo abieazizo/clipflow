@@ -793,8 +793,8 @@ export function welcomePage(
     const presets = Object.keys(CAPTION_PRESETS) as Array<keyof typeof CAPTION_PRESETS>;
     content = `
     <section class="wiz-step" data-caption-editor>
-      <h1 class="display">Your caption</h1>
-      <p class="wiz-sub">Written for you on every post. Pick the voice.</p>
+      <h1 class="display">Your caption, your voice<span class="period">.</span></h1>
+      <p class="wiz-sub">Written onto every Reel + TikTok for you. Pick the vibe &mdash; change it any time on Home.</p>
       <div class="wiz-body stack">
         <div class="preset-row" role="group" aria-label="Caption style">
           ${presets.map((p) => `<button type="button" class="preset-btn" data-preset="${p}" aria-pressed="${acct.captionPreset === p}">${p[0].toUpperCase() + p.slice(1)}</button>`).join("")}
@@ -889,6 +889,25 @@ function connectError(code: string, label: string): string {
     case "slow_down": return `Too many tries at once. Give it a minute.`;
     default: return `${label} didn't connect. Tap Connect to try again.`;
   }
+}
+
+/** The caption editor sheet — one component, opened from Settings AND Home. */
+function captionSheet(acct: Account): string {
+  return sheet("caption", "Caption style", `
+      <div data-caption-editor>
+        <div class="preset-row" role="group" aria-label="Caption style">
+          ${(Object.keys(CAPTION_PRESETS) as Array<keyof typeof CAPTION_PRESETS>).map((p) => `<button type="button" class="preset-btn" data-preset="${p}" aria-pressed="${acct.captionPreset === p}">${p[0].toUpperCase() + p.slice(1)}</button>`).join("")}
+          <button type="button" class="preset-btn" data-preset="custom" aria-pressed="${acct.captionPreset === "custom"}">Mine</button>
+        </div>
+        <label class="field" data-custom-wrap ${acct.captionPreset === "custom" ? "" : "hidden"} style="margin-top:var(--s-4)">
+          <span class="field-label">Your template</span>
+          <textarea class="field-input mono" data-custom-template rows="4" maxlength="2200">${esc(acct.captionTemplate)}</textarea>
+          <p class="field-help">Slots: {title} {username} {hashtags}</p>
+        </label>
+        <div class="caption-preview" data-caption-preview aria-live="polite" style="margin-top:var(--s-4)"></div>
+      </div>`,
+    `<button class="btn" type="button" data-caption-save data-loading-text="Saving&hellip;">Save caption</button>
+     <button class="btn btn-quiet" type="button" data-sheet-close>Cancel</button>`);
 }
 
 /** Caption data island: presets + user vars for the live preview. */
@@ -1119,10 +1138,15 @@ export function dashboard(
     </section>
     ${failed > 0 ? `<p class="fail-row" data-rise style="--i:2">${failed} post${failed === 1 ? "" : "s"} didn&rsquo;t go out &mdash; <a href="/history?filter=failed">Fix in Clips</a></p>` : ""}`;
   } else {
-    // THE LIVE DESK hero — an editorial status block with a hero numeral,
-    // not a card. States what's happening now, in big type.
+    // THE LIVE DESK — teach the machine, then hand over the controls.
+    // 1) hero statement, 2) the four-stage pipeline (the mental model),
+    // 3) the check console: big primary action + live progress theater +
+    //    the auto-post toggle + caption row. No mystery left on this screen.
     const failed = extras.stats?.failed ?? 0;
     const postedWeek = extras.stats?.postedWeek ?? 0;
+    const auto = extras.mode !== "manual";
+    const presetLabel = acct.captionPreset === "custom" ? "Your own words"
+      : acct.captionPreset[0].toUpperCase() + acct.captionPreset.slice(1);
     hero = `
     <section class="desk-hero" data-rise style="--i:1">
       <p class="kicker">This week</p>
@@ -1134,14 +1158,41 @@ export function dashboard(
           <p class="hero-sub-line">Reels + TikTok, on their own.</p>
         </div>
       </div>` : `
-      <h2 class="display hero-line-lg">Ready for your next live<span class="period">.</span></h2>
-      <p class="hero-sub-line">Clip on Whatnot and make it <strong>public</strong> &mdash; it posts itself.</p>`}
-      <div class="hero-foot">
-        <button class="btn-text" type="button" data-check-now data-loading-text="Checking&hellip;">Check for clips now</button>
-        ${extras.lastCheckedAt ? `<span class="since mono">checked <span data-check-tick data-ts="${esc(extras.lastCheckedAt)}">${esc(relShort(extras.lastCheckedAt))}</span> ago</span>` : ""}
+      <h2 class="display hero-line-lg">Your next clip posts itself<span class="period">.</span></h2>
+      <p class="hero-sub-line">Here&rsquo;s the whole machine &mdash; nothing else to learn:</p>`}
+      <div class="pipe" role="list" aria-label="How posting works">
+        <div class="pipe-step" role="listitem"><span class="pipe-n mono">1</span><p class="pipe-t">Go live on Whatnot</p></div>
+        <div class="pipe-step" role="listitem"><span class="pipe-n mono">2</span><p class="pipe-t">Tap Clip &middot; make it <strong>public</strong></p></div>
+        <div class="pipe-step is-live" role="listitem"><span class="pipe-n mono">3</span><p class="pipe-t">We catch it${extras.lastCheckedAt ? `<span class="pipe-sub mono">checked <span data-check-tick data-ts="${esc(extras.lastCheckedAt)}">${esc(relShort(extras.lastCheckedAt))}</span> ago</span>` : `<span class="pipe-sub mono">every 5 minutes</span>`}</p></div>
+        <div class="pipe-step" role="listitem"><span class="pipe-n mono">4</span><p class="pipe-t">Posted <span class="pipe-badges">${icon("instagram")}${icon("tiktok")}</span></p></div>
       </div>
       ${failed > 0 ? `<p class="fail-row">${failed} post${failed === 1 ? "" : "s"} didn&rsquo;t go out &mdash; <a href="/history?filter=failed">Fix in Clips</a></p>` : ""}
-      ${clips.length === 0 ? `<p style="margin-top:var(--s-3)"><button class="howto-btn" type="button" data-sheet-open="clip-demo">${icon("scissors")}How to clip</button></p>` : ""}
+    </section>
+
+    <section class="card check-console" data-rise style="--i:2" data-check-console>
+      <div data-check-idle>
+        <button class="btn btn-block" type="button" data-check-now>Check for clips now</button>
+        <p class="fine check-hint">Scans your public clips on <span class="mono">@${esc(uname)}</span> in a few seconds.</p>
+      </div>
+      <div class="check-live" data-check-live hidden aria-live="polite">
+        <p class="check-line mono" data-check-line></p>
+        <p class="check-subline" data-check-subline hidden></p>
+        <p data-check-actions hidden><button class="howto-btn" type="button" data-sheet-open="clip-demo">${icon("scissors")}How to clip</button></p>
+      </div>
+      <div class="console-rows">
+        <label class="grow">
+          ${icon("sparkles")}
+          <span class="grow-label">Post automatically<span class="grow-sub" data-auto-sub>${auto ? "On &mdash; checks every 5 minutes and posts new public clips by itself" : "Off &mdash; clips post only when you tap Check"}</span></span>
+          <span class="switch"><input type="checkbox" data-mode-toggle ${auto ? "checked" : ""}><span class="knob"></span></span>
+        </label>
+        <button type="button" class="grow" data-sheet-open="caption">
+          ${icon("receipt")}
+          <span class="grow-label">Caption on every post<span class="grow-sub">Written for you &mdash; pick the voice</span></span>
+          <span class="grow-value">${esc(presetLabel)}</span>
+          ${icon("chevron-right", "chev")}
+        </button>
+      </div>
+      ${clips.length === 0 ? `<p class="console-howto"><button class="howto-btn" type="button" data-sheet-open="clip-demo">${icon("scissors")}See how to clip</button></p>` : ""}
     </section>`;
   }
 
@@ -1199,7 +1250,7 @@ export function dashboard(
     title: "Home", tab: "home", content, csrf, who: shellWho(acct), admin: acct.isAdmin,
     scripts: ["/js/home.js"],
     noTabs: celebrate,
-    after: celebrate ? "" : clipDemoSheet(),
+    after: celebrate ? "" : clipDemoSheet() + (connected ? captionSheet(acct) + captionIsland(acct) : ""),
   });
 }
 
@@ -1579,21 +1630,7 @@ export function settingsPage(acct: Account, opts: { csrf: string; active: boolea
        <button class="btn btn-quiet" type="button" data-sheet-close>Cancel</button>`)}
     ${discSheet("instagram", "Instagram")}
     ${discSheet("tiktok", "TikTok")}
-    ${sheet("caption", "Caption style", `
-      <div data-caption-editor>
-        <div class="preset-row" role="group" aria-label="Caption style">
-          ${(Object.keys(CAPTION_PRESETS) as Array<keyof typeof CAPTION_PRESETS>).map((p) => `<button type="button" class="preset-btn" data-preset="${p}" aria-pressed="${acct.captionPreset === p}">${p[0].toUpperCase() + p.slice(1)}</button>`).join("")}
-          <button type="button" class="preset-btn" data-preset="custom" aria-pressed="${acct.captionPreset === "custom"}">Mine</button>
-        </div>
-        <label class="field" data-custom-wrap ${acct.captionPreset === "custom" ? "" : "hidden"} style="margin-top:var(--s-4)">
-          <span class="field-label">Your template</span>
-          <textarea class="field-input mono" data-custom-template rows="4" maxlength="2200">${esc(acct.captionTemplate)}</textarea>
-          <p class="field-help">Slots: {title} {username} {hashtags}</p>
-        </label>
-        <div class="caption-preview" data-caption-preview aria-live="polite" style="margin-top:var(--s-4)"></div>
-      </div>`,
-      `<button class="btn" type="button" data-caption-save data-loading-text="Saving&hellip;">Save caption</button>
-       <button class="btn btn-quiet" type="button" data-sheet-close>Cancel</button>`)}
+    ${captionSheet(acct)}
     ${sheet("password", "Change password", `
       <form method="post" action="/account/password" data-password-form>
         <input type="hidden" name="csrf" value="${esc(csrf)}">
