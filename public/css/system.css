@@ -237,6 +237,50 @@ body.page-settings { --mesh-a: rgba(18, 183, 106, .12); --mesh-b: rgba(255, 176,
   to   { transform: translate3d(1.2%, 1.1%, 0) scale(1.04); }
 }
 
+/* ----------------------------------------------------------------------------
+   THE CONTROL ROOM — the operator's Command Center is ALWAYS the dark console,
+   regardless of system scheme. Same warm-charcoal tokens as dark mode plus a
+   flare-leaning mesh; every component inherits through the token system.
+---------------------------------------------------------------------------- */
+body.page-admin {
+  color-scheme: dark;
+  --paper: #141210;
+  --paper-2: #1B1815;
+  --surface: #201C18;
+  --sunken: #17140F;
+  --ink: #F7F3EC;
+  --ink-2: #C4BCAD;
+  --ink-3: #8C8474;
+  --line: #2C2823;
+  --line-strong: #3A342C;
+  --row-inset: rgba(247, 243, 236, .07);
+  --flare: #FF4D66;
+  --flare-tint: rgba(255, 77, 102, .14);
+  --ok: #2FCE85;
+  --ok-tint: rgba(47, 206, 133, .14);
+  --warn: #FFAB3D;
+  --warn-tint: rgba(255, 171, 61, .16);
+  --err: #FF5A50;
+  --err-soft: rgba(255, 90, 80, .14);
+  --accent-glow: rgba(255, 77, 102, .30);
+  --glow-flare: 0 8px 28px rgba(255, 77, 102, .42), 0 2px 6px rgba(224, 38, 75, .32);
+  --glow-flare-lg: 0 12px 40px rgba(255, 77, 102, .52), 0 3px 10px rgba(224, 38, 75, .38);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, .25), 0 12px 32px -10px rgba(0, 0, 0, .45);
+  --shadow-floating: 0 10px 44px -12px rgba(0, 0, 0, .60);
+  --shadow-micro: 0 1px 2px rgba(0, 0, 0, .30);
+  --glass: rgba(32, 28, 24, .78);
+  --glass-line: rgba(247, 243, 236, .10);
+  --glass-rim: rgba(247, 243, 236, .09);
+  --scrim: rgba(0, 0, 0, .55);
+  --grain-opacity: .085;
+  --grain-blend: screen;
+  --surface-rim: inset 0 1px 0 rgba(247, 243, 236, .07), inset 0 -1px 0 rgba(0, 0, 0, .20);
+  --surface-tone: linear-gradient(180deg, #221E1A 0%, #1E1A16 100%);
+  --mesh-a: rgba(255, 77, 102, .16);
+  --mesh-b: rgba(255, 150, 80, .09);
+  --mesh-c: rgba(37, 205, 240, .05);
+}
+
 /* FILM GRAIN — fixed noise over the whole frame. This kills the flat feel. */
 body:not(.land)::after {
   content: "";
@@ -2099,10 +2143,10 @@ body.sheet-locked { overflow: hidden; }
 @media (min-width: 900px) { .cc-band { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .cc-stat {
   position: relative;
-  background: var(--surface);
+  background: var(--surface-tone);
   border: 1px solid var(--line);
   border-radius: var(--r-field);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--surface-rim), var(--shadow-card);
   padding: var(--s-4);
   display: grid; gap: 2px; align-content: start;
   overflow: hidden;
@@ -2121,10 +2165,10 @@ body.sheet-locked { overflow: hidden; }
 .cc-sub { font-size: 12px; color: var(--ok); font-weight: 600; }
 
 .cc-panel {
-  background: var(--surface);
+  background: var(--surface-tone);
   border: 1px solid var(--line);
   border-radius: var(--r-field);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--surface-rim), var(--shadow-card);
   padding: var(--s-4) var(--s-4) var(--s-4);
   margin-bottom: var(--s-4);
 }

@@ -90,6 +90,7 @@ const ICON_PATHS: Record<string, string> = {
   "help-circle": '<circle cx="12" cy="12" r="8.75"/><path d="M9.4 9.2a2.8 2.8 0 0 1 5.4 1c0 1.8-2.6 2.2-2.6 3.8"/><circle cx="12" cy="17" r="0.4" fill="currentColor" stroke="none"/>',
   card: '<rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="M3.5 10h17"/>',
   key: '<circle cx="8" cy="12" r="3.5"/><path d="M11.5 12h9M17 12v3M20.5 12v2"/>',
+  gauge: '<circle cx="12" cy="12" r="8.75"/><path d="M12 12l4.4-3.4"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M5.6 15.5h1.4M17 15.5h1.4"/>',
 };
 
 function icon(name: keyof typeof ICON_PATHS | string, cls = ""): string {
@@ -305,7 +306,7 @@ export function layout(title: string, body: string): string {
   return doc(title, body);
 }
 
-type Tab = "home" | "clips" | "studio" | "settings";
+type Tab = "home" | "clips" | "studio" | "settings" | "admin";
 
 const TABS: Array<{ key: Tab; href: string; label: string; ic: string }> = [
   { key: "home", href: "/dashboard", label: "Home", ic: "home" },
@@ -313,6 +314,11 @@ const TABS: Array<{ key: Tab; href: string; label: string; ic: string }> = [
   { key: "studio", href: "/studio", label: "Studio", ic: "image" },
   { key: "settings", href: "/settings", label: "Settings", ic: "sliders" },
 ];
+
+/** Operators get a fifth cell — the Command Center rides the main nav. */
+function tabsFor(admin: boolean): typeof TABS {
+  return admin ? [...TABS, { key: "admin", href: "/admin", label: "Admin", ic: "gauge" }] : TABS;
+}
 
 /** Filled variants for the active tab icon. */
 const ICON_FILLED: Record<string, string> = {
@@ -326,9 +332,9 @@ function iconFilled(name: string): string {
   return `<svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">${ICON_FILLED[name] ?? ICON_PATHS[name]}</svg>`;
 }
 
-function tabbar(current: Tab): string {
+function tabbar(current: Tab, admin = false): string {
   return `<nav class="tabbar" aria-label="App">
-    ${TABS.map((t) => `<a href="${t.href}"${t.key === current ? ` aria-current="page"` : ""}>${icon(t.ic)}<span>${t.label}</span></a>`).join("")}
+    ${tabsFor(admin).map((t) => `<a href="${t.href}"${t.key === current ? ` aria-current="page"` : ""}>${icon(t.ic)}<span>${t.label}</span></a>`).join("")}
   </nav>`;
 }
 
@@ -346,6 +352,8 @@ interface ShellOpts {
   who?: { name: string; email: string };
   /** wide desktop column (operator command center) */
   wide?: boolean;
+  /** operator accounts get the Admin tab in both navs */
+  admin?: boolean;
 }
 
 function shellWho(acct: Account): { name: string; email: string } {
@@ -361,7 +369,7 @@ function appShell(o: ShellOpts): string {
   <aside class="rail">
     <a class="wordmark rail-brand" href="/dashboard" aria-label="ClipFlow home">${WORDMARK_INNER}</a>
     <nav class="rail-nav" aria-label="App">
-      ${TABS.map((t) => `<a href="${t.href}"${t.key === o.tab ? ` aria-current="page"` : ""}>${icon(t.ic)}<span>${t.label}</span></a>`).join("")}
+      ${tabsFor(o.admin ?? false).map((t) => `<a href="${t.href}"${t.key === o.tab ? ` aria-current="page"` : ""}>${icon(t.ic)}<span>${t.label}</span></a>`).join("")}
     </nav>
     ${who ? `<div class="rail-foot">
       <span class="rail-ava" aria-hidden="true">${esc((who.name.replace(/^@+/, "") || who.email).charAt(0).toUpperCase())}</span>
@@ -382,7 +390,7 @@ function appShell(o: ShellOpts): string {
 </div>
 ${o.after ?? ""}
 <div class="sheet-scrim" data-sheet-scrim hidden></div>
-${o.noTabs ? "" : tabbar(o.tab)}`, { bodyClass: `page-${o.tab}${o.noTabs ? "" : " has-tabs"}`, scripts: o.scripts, csrf: o.csrf, noindex: true });
+${o.noTabs ? "" : tabbar(o.tab, o.admin ?? false)}`, { bodyClass: `page-${o.tab}${o.noTabs ? "" : " has-tabs"}`, scripts: o.scripts, csrf: o.csrf, noindex: true });
 }
 
 /** A bottom sheet. Hidden until core.js opens it by id. */
@@ -1184,7 +1192,7 @@ export function dashboard(
   `;
 
   return appShell({
-    title: "Home", tab: "home", content, csrf, who: shellWho(acct),
+    title: "Home", tab: "home", content, csrf, who: shellWho(acct), admin: acct.isAdmin,
     scripts: ["/js/home.js"],
     noTabs: celebrate,
     after: celebrate ? "" : clipDemoSheet(),
@@ -1299,7 +1307,7 @@ export function historyPage(
     ${stack}`;
 
   return appShell({
-    title: "Clips", tab: "clips", content, csrf: opts.csrf, who: shellWho(acct),
+    title: "Clips", tab: "clips", content, csrf: opts.csrf, who: shellWho(acct), admin: acct.isAdmin,
     scripts: ["/js/clips.js"], after: sheets + clipDemoSheet(),
   });
 }
@@ -1390,7 +1398,7 @@ export function thumbnailsPage(
     ${grid}`;
 
   return appShell({
-    title: "Studio", tab: "studio", content, csrf: opts.csrf, who: shellWho(acct),
+    title: "Studio", tab: "studio", content, csrf: opts.csrf, who: shellWho(acct), admin: acct.isAdmin,
     scripts: ["/js/studio.js"],
   });
 }
@@ -1618,7 +1626,7 @@ export function settingsPage(acct: Account, opts: { csrf: string; active: boolea
     ${captionIsland(acct)}`;
 
   return appShell({
-    title: "Settings", tab: "settings", content, csrf, who: shellWho(acct),
+    title: "Settings", tab: "settings", content, csrf, who: shellWho(acct), admin: acct.isAdmin,
     scripts: ["/js/settings.js"], after,
   });
 }
@@ -1727,7 +1735,7 @@ export function billingPage(acct: Account, v: BillingView, active = true): strin
     <div class="billing-actions">${actions}</div>`;
 
   return appShell({
-    title: "Billing", tab: "settings", content, csrf: v.csrf, after, who: shellWho(acct),
+    title: "Billing", tab: "settings", content, csrf: v.csrf, after, who: shellWho(acct), admin: acct.isAdmin,
   });
 }
 
@@ -1750,7 +1758,7 @@ export function guidePage(acct: Account, active = true): string {
       <div class="faq-item"><p class="q">Will this get me banned?</p><p class="a">No. Posting goes through Instagram&rsquo;s and TikTok&rsquo;s official tools &mdash; the route brands use.</p></div>
       <div class="faq-item"><p class="q">Something else?</p><p class="a"><a href="mailto:${CONTACT_EMAIL}">Email ${esc(SELLER_NAME)}</a>. A real person answers.</p></div>
     </div>`;
-  return appShell({ title: "Guide", tab: "settings", content, who: shellWho(acct) });
+  return appShell({ title: "Guide", tab: "settings", content, who: shellWho(acct), admin: acct.isAdmin });
 }
 
 // ---------------------------------------------------------------------------
@@ -1791,7 +1799,7 @@ export function statusPage(acct: Account, info: StatusInfo, active = true): stri
         ${row("Cover studio", info.geminiConfigured ? "configured" : "not configured", info.geminiConfigured)}
       </dl>
     </div>`;
-  return appShell({ title: "Status", tab: "settings", content, who: shellWho(acct) });
+  return appShell({ title: "Status", tab: "settings", content, who: shellWho(acct), admin: acct.isAdmin });
 }
 
 // ---------------------------------------------------------------------------
@@ -2020,5 +2028,5 @@ export function adminPage(
       <div class="cc-events">${eventRows}</div>
     </section>`;
 
-  return appShell({ title: "Operator", tab: "settings", content, csrf, who: shellWho(acct), wide: true });
+  return appShell({ title: "Operator", tab: "admin", content, csrf, who: shellWho(acct), wide: true, admin: true });
 }
