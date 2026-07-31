@@ -1197,10 +1197,22 @@ export function dashboard(
     <section class="desk-pipe" data-rise style="--i:3">
       <p class="kicker">How it works</p>
       <div class="pipe" role="list" aria-label="How posting works">
-        <div class="pipe-step" role="listitem"><span class="pipe-n mono">1</span><p class="pipe-t">Go live on Whatnot</p></div>
-        <div class="pipe-step" role="listitem"><span class="pipe-n mono">2</span><p class="pipe-t">Tap Clip &middot; make it <strong>public</strong></p></div>
-        <div class="pipe-step is-live" role="listitem"><span class="pipe-n mono">3</span><p class="pipe-t">We catch it${extras.lastCheckedAt ? `<span class="pipe-sub mono">checked <span data-check-tick data-ts="${esc(extras.lastCheckedAt)}">${esc(relShort(extras.lastCheckedAt))}</span> ago</span>` : `<span class="pipe-sub mono">every 5 minutes</span>`}</p></div>
-        <div class="pipe-step" role="listitem"><span class="pipe-n mono">4</span><p class="pipe-t">Posted <span class="pipe-badges">${icon("instagram")}${icon("tiktok")}</span></p></div>
+        <div class="pipe-step" role="listitem">
+          <span class="pipe-node"><span class="pipe-n mono">1</span></span>
+          <div class="pipe-body"><p class="pipe-t">Go live on Whatnot</p><p class="pipe-sub">Sell like you always do</p></div>
+        </div>
+        <div class="pipe-step" role="listitem">
+          <span class="pipe-node"><span class="pipe-n mono">2</span></span>
+          <div class="pipe-body"><p class="pipe-t">Tap Clip &middot; make it <strong>public</strong></p><p class="pipe-sub">The one thing to remember</p></div>
+        </div>
+        <div class="pipe-step is-live" role="listitem">
+          <span class="pipe-node"><span class="pipe-n mono">3</span></span>
+          <div class="pipe-body"><p class="pipe-t">We catch it</p><p class="pipe-sub mono">${extras.lastCheckedAt ? `checked <span data-check-tick data-ts="${esc(extras.lastCheckedAt)}">${esc(relShort(extras.lastCheckedAt))}</span> ago` : `every 5 minutes`}</p></div>
+        </div>
+        <div class="pipe-step" role="listitem">
+          <span class="pipe-node"><span class="pipe-n mono">4</span></span>
+          <div class="pipe-body"><p class="pipe-t">Posted <span class="pipe-badges">${icon("instagram")}${icon("tiktok")}</span></p><p class="pipe-sub">Captioned, on their own</p></div>
+        </div>
       </div>
       ${failed > 0 ? `<p class="fail-row">${failed} post${failed === 1 ? "" : "s"} didn&rsquo;t go out &mdash; <a href="/history?filter=failed">Fix in Clips</a></p>` : ""}
       ${clips.length === 0 ? `<p class="console-howto"><button class="howto-btn" type="button" data-sheet-open="clip-demo">${icon("scissors")}See how to clip</button></p>` : ""}

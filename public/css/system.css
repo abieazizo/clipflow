@@ -1377,32 +1377,57 @@ body.sheet-locked { overflow: hidden; }
 .hero-foot .btn-text { padding-left: 0; justify-content: flex-start; }
 .hero-foot .since { color: var(--ink-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
 
-/* THE PIPELINE — the four-stage mental model, always visible for connected
-   sellers: go live → clip public → we catch it (live tick) → posted. */
-.pipe { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); margin-top: var(--s-4); }
-@media (min-width: 700px) { .pipe { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.pipe-step {
-  position: relative;
-  display: flex; align-items: flex-start; gap: var(--s-2);
-  padding: var(--s-3);
-  border: 1px solid var(--line); border-radius: var(--r-chip);
+/* THE PIPELINE — a conveyor, not four boxes. Mobile: vertical timeline with
+   a rail through the nodes. Desktop: one horizontal track, nodes ON the line,
+   the live stage pulsing. Reads as flow with direction, ending at the
+   platforms. */
+.pipe { position: relative; display: grid; gap: var(--s-4); margin-top: var(--s-4); padding: var(--s-1) 0; }
+.pipe::before {
+  content: ""; position: absolute; left: 13px; top: 16px; bottom: 16px; width: 2px;
+  background: linear-gradient(180deg, var(--line-strong), var(--flare) 55%, var(--line-strong));
+  border-radius: 2px;
+}
+.pipe-step { position: relative; display: flex; gap: var(--s-3); align-items: flex-start; }
+.pipe-node {
+  position: relative; z-index: 1; flex: none;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
   background: var(--surface-tone);
+  border: 1px solid var(--line-strong);
   box-shadow: var(--surface-rim), var(--shadow-micro);
 }
-.pipe-n {
-  width: 20px; height: 20px; border-radius: 50%; flex: none;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: var(--sunken); color: var(--ink-3);
-  border: 1px solid var(--line);
-  font-size: 10.5px; font-weight: 600; font-variant-numeric: tabular-nums;
-}
-.pipe-t { font-size: 12.5px; font-weight: 600; letter-spacing: -.01em; line-height: 1.3; min-width: 0; }
+.pipe-n { font-size: 11px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pipe-body { min-width: 0; padding-top: 3px; }
+.pipe-t { font-size: 14px; font-weight: 600; letter-spacing: -.01em; line-height: 1.25; }
 .pipe-t strong { color: var(--flare); }
-.pipe-sub { display: block; font-size: 10px; font-weight: 500; color: var(--ink-3); margin-top: 2px; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
-.pipe-step.is-live { background: var(--flare-tint); border-color: transparent; box-shadow: inset 0 0 0 1px rgba(255, 45, 85, .16); }
-.pipe-step.is-live .pipe-n { background: var(--flare); color: #fff; border-color: var(--flare); }
+.pipe-sub { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+.pipe-sub.mono { font-size: 11px; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.pipe-step.is-live .pipe-node { background: var(--flare); border-color: var(--flare); box-shadow: var(--glow-flare), var(--inset-hi); }
+.pipe-step.is-live .pipe-n { color: #fff; }
+.pipe-step.is-live .pipe-node::after {
+  content: ""; position: absolute; inset: -1px; border-radius: 50%;
+  border: 1.5px solid var(--flare);
+  animation: pipe-ping 2.2s ease-out infinite;
+}
+@keyframes pipe-ping {
+  from { transform: scale(1); opacity: .5; }
+  to { transform: scale(1.9); opacity: 0; }
+}
 .pipe-badges { display: inline-flex; gap: 4px; vertical-align: -3px; margin-left: 2px; }
 .pipe-badges .icon { width: 15px; height: 15px; color: var(--ink-2); }
+
+@media (min-width: 700px) {
+  .pipe { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-4); padding: 0; }
+  .pipe::before {
+    /* start at node 1's center, END at node 4's center — the line must not
+       run past the last stage */
+    left: 14px; right: calc(25% - 14px); top: 13px; bottom: auto; width: auto; height: 2px;
+    background: linear-gradient(90deg, var(--line-strong), var(--flare) 62%, var(--line-strong));
+  }
+  .pipe-step { flex-direction: column; gap: var(--s-2); }
+  .pipe-body { padding-top: 0; }
+  .pipe-sub, .pipe-sub.mono { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
 
 /* THE CHECK CONSOLE — the page's power action + narrated live progress */
 .check-console { margin-top: var(--s-4); }
@@ -2381,7 +2406,7 @@ body.sheet-locked { overflow: hidden; }
   .js .will-celebrate .glyph-ok { transform: none; }
   .js .will-celebrate .glyph-ok .draw { stroke-dashoffset: 0; }
   .js .handle-result .handle-float, .js .cover-result { opacity: 1; transform: none; }
-  .dot-idle::after, .dot-live::after, .step-num.is-current::after, .cd-livedot::after { animation: none; opacity: 0; }
+  .dot-idle::after, .dot-live::after, .step-num.is-current::after, .cd-livedot::after, .pipe-step.is-live .pipe-node::after { animation: none; opacity: 0; }
   .live-cursor { animation: none; }
   .gen-frame .light-bar { animation: none; }
   .skeleton::after, .chip-wait::after { animation: none; }
