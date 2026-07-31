@@ -1,159 +1,196 @@
 /* ============================================================================
    landing.css — LANDING PAGE ONLY, scoped under body.land so the app is
-   untouched. Bold, crafted, confident light: a printed-page canvas, ONE
-   decisive accent used like ink (no generic rainbow blobs), a highlighter
-   headline mark, a big cinematic video hero with the proof receipt landing on
-   it as a live activity, editorial scale + rhythm, meticulous motion.
+   untouched. 2026 parity with the app: the SAME canonical tokens (#FF2D55,
+   warm paper, Clash Display, depth-from-light materials, real frosted glass,
+   perceptible grain + mesh), the same motion language, and the app's
+   signature receipt-prints-"POSTED" moment as the proof section.
+   Copy, section order, offer, and the skepticism→proof→belief→commitment arc
+   are preserved exactly — this is visual + layout + motion only.
+
+   Always light (marketing page): every inherited token is pinned here so the
+   app's dark scheme never leaks in.
    ========================================================================== */
 
 .land {
-  --accent: #FF2757;          /* one confident magenta-red, used like ink */
-  --accent-ink: #E01047;
-  --accent-tint: #FFE7EE;
-  --paper: #FBFAF9;
-  --paper-2: #F3F1EE;
-  --ink: #141317;
-  --ink-2: #565159;
-  --ink-3: #8C868F;
-  --hair: rgba(20, 18, 24, .10);
-  --hair-soft: rgba(20, 18, 24, .06);
-  --card: #FFFFFF;
-  --glass: rgba(255, 255, 255, .72);
-  --sh-1: 0 1px 2px rgba(20,18,24,.06), 0 8px 20px -10px rgba(20,18,24,.22);
-  --sh-2: 0 2px 6px rgba(20,18,24,.08), 0 26px 50px -18px rgba(20,18,24,.30);
-  --sh-3: 0 4px 10px rgba(20,18,24,.10), 0 40px 80px -26px rgba(20,18,24,.42);
+  color-scheme: light;
+  /* canonical app tokens, pinned light */
+  --paper: #FAF8F3; --paper-2: #F2EEE5;
+  --surface: #FFFFFF; --sunken: #F0ECE3;
+  --ink: #17140F; --ink-2: #4A4437; --ink-3: #857D6E;
+  --line: #E9E3D8; --line-strong: #DCD5C6;
+  --row-inset: rgba(23, 20, 15, .07);
+  --flare: #FF2D55; --flare-2: #E0264B;
+  --flare-tint: rgba(255, 45, 85, .10);
+  --live: #FF2D40;
+  --ok: #12B76A; --ok-tint: rgba(18, 183, 106, .12);
+  --err: #E5342A; --err-soft: rgba(229, 52, 42, .10);
+  --grad-flare: linear-gradient(180deg, #FF4066 0%, #ED1244 100%);
+  --glow-flare: 0 8px 24px rgba(255, 45, 85, .32), 0 2px 6px rgba(224, 38, 75, .22);
+  --glow-flare-lg: 0 12px 34px rgba(255, 45, 85, .42), 0 3px 8px rgba(224, 38, 75, .28);
+  --accent-glow: rgba(255, 45, 85, .22);
+  --shadow-micro: 0 1px 2px rgba(23, 20, 15, .05);
+  --shadow-card: 0 1px 2px rgba(23, 20, 15, .05), 0 12px 32px -10px rgba(23, 20, 15, .12);
+  --shadow-floating: 0 10px 44px -12px rgba(23, 20, 15, .20);
+  --surface-rim: inset 0 1px 0 rgba(255, 255, 255, .70), inset 0 -1px 0 rgba(23, 20, 15, .03);
+  --surface-tone: linear-gradient(180deg, #FFFFFF 0%, #FDFBF7 100%);
+  --glass: rgba(255, 255, 255, .78);
+  --glass-line: rgba(23, 20, 15, .08);
+  --glass-rim: rgba(255, 255, 255, .55);
+  --scrim: rgba(23, 20, 15, .38);
+  /* legacy aliases some shared components read */
+  --bg: var(--paper); --fill: var(--sunken);
+  --sub: var(--ink-2); --faint: var(--ink-3);
+  --hairline: var(--line); --border-strong: var(--line-strong);
+  --accent: var(--flare); --accent-press: var(--flare-2); --accent-soft: var(--flare-tint);
+  --r-s: 10px; --r-m: 14px; --r-l: 16px; --r-xl: 24px;
   color: var(--ink);
   background: var(--paper);
 }
 .land .sub, .land .hero-sub { color: var(--ink-2); }
 .land .fine { color: var(--ink-3); }
+.land .period { color: var(--flare); -webkit-text-fill-color: var(--flare); }
 
 /* ----------------------------------------------------------------------------
-   ATMOSPHERE — a printed page: faint dot-grid + fine grain, one hero spotlight
+   ATMOSPHERE — the app's mesh + perceptible grain (shared land-atmos nodes)
 ---------------------------------------------------------------------------- */
 .land-atmos { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: clip; contain: strict; }
 .land .wrap, .land .dock { position: relative; z-index: 1; }
 .land-atmos .land-grid {
-  position: absolute; inset: 0;
-  background-image: radial-gradient(rgba(20,18,24,.055) 1.1px, transparent 1.2px);
-  background-size: 24px 24px;
-  -webkit-mask-image: radial-gradient(130% 90% at 50% -8%, #000 30%, transparent 78%);
-  mask-image: radial-gradient(130% 90% at 50% -8%, #000 30%, transparent 78%);
+  position: absolute; inset: -12%;
+  background:
+    radial-gradient(56% 42% at 82% -8%, rgba(255, 45, 85, .12), transparent 66%),
+    radial-gradient(44% 38% at -10% 26%, rgba(255, 176, 92, .10), transparent 70%),
+    radial-gradient(70% 46% at 50% 116%, rgba(255, 120, 60, .06), transparent 74%),
+    radial-gradient(60% 52% at 50% 118%, var(--paper-2), transparent 72%);
+  animation: land-mesh 44s cubic-bezier(.22, 1, .36, 1) infinite alternate;
+}
+@keyframes land-mesh {
+  from { transform: translate3d(-1.2%, -0.8%, 0) scale(1); }
+  to   { transform: translate3d(1.2%, 1.1%, 0) scale(1.04); }
 }
 .land-atmos .land-grain {
   position: absolute; inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: .04; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+  opacity: .06; mix-blend-mode: multiply;
 }
 
 /* ----------------------------------------------------------------------------
-   TYPE — big, confident, editorial. One accent, used like ink.
+   TYPE — the app's editorial voice: Clash Display statements, mono facts
 ---------------------------------------------------------------------------- */
-.land .period { color: var(--accent); -webkit-text-fill-color: var(--accent); }
+.land .display, .land .wordmark-text { font-family: var(--font-display); }
+.land .display { letter-spacing: -.02em; line-height: .98; text-rendering: optimizeLegibility; }
+.land .wordmark-text { letter-spacing: -.02em; }
 .land .land-hero h1 {
-  font-weight: 800; letter-spacing: -.062em; line-height: .92;
-  font-size: clamp(52px, 15.5vw, 76px);
+  font-family: var(--font-display);
+  font-weight: 700; letter-spacing: -.025em; line-height: .95;
+  font-size: clamp(50px, 15.2vw, 72px);
 }
-/* the highlighter mark — a hand-drawn accent block, white knockout text */
-.land .hl { position: relative; color: #fff; -webkit-text-fill-color: #fff; white-space: nowrap; z-index: 0; padding: 0 .04em; }
+/* the highlighter mark — white knockout on a rotated flare block */
+.land .hl { position: relative; color: #fff; -webkit-text-fill-color: #fff; white-space: nowrap; z-index: 0; padding: 0 .05em; }
 .land .hl::before {
   content: ""; position: absolute; z-index: -1;
-  left: -.06em; right: -.06em; top: .1em; bottom: .07em;
-  background: var(--accent);
-  border-radius: 8px 13px 9px 12px;
-  transform: rotate(-1.6deg);
-  box-shadow: 0 6px 18px -6px rgba(255,39,87,.6);
-}
-.land .land-hero .hero-sub {
-  font-size: 18px; line-height: 1.45; max-width: 30ch; margin-inline: auto;
-  font-weight: 450;
+  left: -.06em; right: -.06em; top: .06em; bottom: .04em;
+  background: var(--grad-flare);
+  border-radius: 10px 14px 10px 13px;
+  transform: rotate(-1.4deg);
+  box-shadow: 0 6px 18px -6px rgba(255, 45, 85, .55), inset 0 1px 0 rgba(255, 255, 255, .25);
 }
 .land .eyebrow {
   color: var(--ink-2); -webkit-text-fill-color: currentColor;
   display: inline-flex; align-items: center; gap: 8px;
-  font-size: 12px; font-weight: 700; letter-spacing: .16em;
+  font-family: var(--font-mono);
+  font-size: 11.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
 }
-.land .eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-tint); position: relative; }
-.land .eyebrow-dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--accent); animation: land-ping 2.4s ease-out infinite; }
+.land .eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--flare); box-shadow: 0 0 0 4px var(--flare-tint); position: relative; }
+.land .eyebrow-dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--flare); animation: land-ping 2.4s ease-out infinite; }
 @keyframes land-ping { from { transform: scale(1); opacity: .6; } to { transform: scale(3); opacity: 0; } }
-
-/* section headers get scale + an accent tick */
-.land .land-section > h2, .land .handle-check-card h2 { font-weight: 800; letter-spacing: -.04em; }
-.land .land-section { padding-top: var(--s-8); }
+.land .land-section > h2, .land .handle-check-card h2 { font-weight: 700; letter-spacing: -.02em; }
+.land .grad { color: var(--flare); }
 
 /* ----------------------------------------------------------------------------
-   NAV — clean, frosts on scroll
+   NAV — frosts on scroll with the glass rim
 ---------------------------------------------------------------------------- */
 .land .land-nav {
   position: sticky; top: 0; z-index: 40;
-  transition: background-color .3s var(--swift), box-shadow .3s;
+  transition: background-color .3s cubic-bezier(.22, 1, .36, 1), box-shadow .3s;
 }
 .land .land-nav.is-stuck {
   background: var(--glass); -webkit-backdrop-filter: saturate(1.5) blur(16px); backdrop-filter: saturate(1.5) blur(16px);
-  box-shadow: 0 1px 0 var(--hair-soft), 0 10px 22px -18px rgba(20,18,24,.5);
+  box-shadow: inset 0 1px 0 var(--glass-rim), 0 1px 0 var(--glass-line), 0 10px 22px -18px rgba(23, 20, 15, .5);
 }
-.land .wordmark-text { letter-spacing: -.05em; }
 
 /* ----------------------------------------------------------------------------
-   BUTTONS — one bold flat accent, springy, tactile (no rainbow, no glow-blur)
+   BUTTONS — the app's flare gradient, glow, sheen, spring press
 ---------------------------------------------------------------------------- */
 .land .btn:not(.btn-quiet) {
   position: relative; overflow: hidden;
-  background: var(--accent); color: #fff;
-  border-radius: 14px;
+  background: var(--grad-flare); color: #fff;
+  border-radius: 16px;
   font-weight: 700; letter-spacing: -.01em;
-  box-shadow: 0 1px 0 rgba(255,255,255,.25) inset, 0 2px 4px rgba(255,39,87,.3), 0 14px 26px -10px rgba(255,39,87,.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), var(--glow-flare);
 }
 .land .btn:not(.btn-quiet)::after {
   content: ""; position: absolute; top: 0; bottom: 0; left: -55%; width: 38%;
-  background: linear-gradient(100deg, transparent, rgba(255,255,255,.4), transparent);
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .4), transparent);
   transform: skewX(-16deg); animation: land-sheen 6s ease-in-out infinite;
 }
 @keyframes land-sheen { 0% { left: -55%; } 22%, 100% { left: 135%; } }
-.land .btn:not(.btn-quiet):active { transform: scale(.965); background: var(--accent-ink); }
+.land .btn:not(.btn-quiet):active { transform: scale(.97); filter: saturate(1.15) brightness(.96); }
 @media (hover: hover) {
-  .land .btn:not(.btn-quiet) { transition: transform .18s var(--spring), box-shadow .2s, background-color .15s; }
-  .land .btn:not(.btn-quiet):hover { transform: translateY(-2px); box-shadow: 0 1px 0 rgba(255,255,255,.25) inset, 0 4px 8px rgba(255,39,87,.34), 0 20px 36px -12px rgba(255,39,87,.7); }
+  .land .btn:not(.btn-quiet) { transition: transform .18s cubic-bezier(.34, 1.56, .64, 1), box-shadow .2s, filter .15s; }
+  .land .btn:not(.btn-quiet):hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), var(--glow-flare-lg); }
 }
 .land .btn-quiet {
-  background: var(--card); color: var(--ink);
-  border: 1px solid var(--hair);
-  box-shadow: var(--sh-1);
+  background: var(--surface-tone); color: var(--ink);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--surface-rim), var(--shadow-micro);
 }
-.land .btn-quiet:active { transform: scale(.965); background: var(--paper-2); }
+.land .btn-quiet:active { transform: scale(.97); background: var(--sunken); }
 
 /* ----------------------------------------------------------------------------
-   HERO — big cinematic clip + the receipt landing ON it as a live activity
+   HERO — the kinetic centerpiece. Mobile stacks; desktop is a real split
+   composition: statement + CTA left, the living proof column right.
 ---------------------------------------------------------------------------- */
-.land .land-hero { padding-top: var(--s-6); overflow-x: clip; }
-.land .proof-unit { max-width: 360px; margin-top: var(--s-6); overflow: visible; }
+.land .land-hero { padding-top: var(--s-6); overflow-x: clip; text-align: center; }
+.land .hero-copy { position: relative; z-index: 1; }
+.land .proof-unit { max-width: 360px; margin: var(--s-6) auto 0; position: relative; text-align: left; overflow: visible; }
 .land .hero-spot {
-  position: absolute; left: 50%; top: 42%; transform: translate(-50%,-50%);
+  position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%);
   width: min(560px, 128%); aspect-ratio: 1; z-index: 0; pointer-events: none;
-  background: radial-gradient(closest-side, rgba(255,39,87,.20), rgba(255,120,80,.10) 46%, transparent 72%);
+  background: radial-gradient(closest-side, var(--accent-glow), rgba(255, 120, 80, .10) 46%, transparent 72%);
   filter: blur(16px);
   animation: land-spot 8s ease-in-out infinite;
 }
-@keyframes land-spot { 0%,100% { opacity: .8; transform: translate(-50%,-50%) scale(1); } 50% { opacity: 1; transform: translate(-50%,-50%) scale(1.06); } }
+@keyframes land-spot { 0%, 100% { opacity: .8; transform: translate(-50%, -50%) scale(1); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); } }
 .land .stage-glow { display: none; }
 .land .clip-card {
   position: relative; z-index: 2;
   max-width: 340px; aspect-ratio: 3 / 4;
   border: 0; border-radius: 26px; padding: 7px; background: #fff;
-  box-shadow: 0 0 0 1px var(--hair-soft), 0 4px 8px rgba(20,18,24,.08), var(--sh-3);
+  box-shadow: 0 0 0 1px var(--glass-line), inset 0 1px 0 rgba(255, 255, 255, .9), 0 4px 8px rgba(23, 20, 15, .08), var(--shadow-floating);
   animation: land-float 6.5s ease-in-out infinite;
+  margin-inline: auto;
 }
-.land .clip-card video { border-radius: 20px; }
-@keyframes land-float { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-8px) rotate(-.15deg); } }
+.land .clip-card video { border-radius: 19px; }
+@keyframes land-float { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-8px) rotate(-.15deg); } }
+/* the ON AIR voice from the app's console: solid flare badge, breathing */
 .land .clip-chip {
-  background: rgba(18,14,20,.5); border: 1px solid rgba(255,255,255,.16);
+  background: rgba(18, 14, 20, .5); border: 1px solid rgba(255, 255, 255, .16);
   -webkit-backdrop-filter: blur(10px) saturate(1.5); backdrop-filter: blur(10px) saturate(1.5);
   font-weight: 700;
 }
+.land .clip-chips .clip-chip:first-child {
+  background: var(--grad-flare); border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 2px 10px rgba(255, 45, 85, .45);
+  animation: land-breathe 2.8s ease-in-out infinite;
+}
+@keyframes land-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
 .land .clip-card .dot-live { background: #fff; }
-.land .clip-card .dot-live::after { border-color: rgba(255,255,255,.9); }
+.land .clip-card .dot-live::after { border-color: rgba(255, 255, 255, .9); }
 
-/* the receipt = a live-activity card landing over the clip's lower edge */
+/* THE PROOF: the receipt lands over the clip's lower edge as frosted glass and
+   prints its POSTED rows — the app's signature moment, on the marketing page */
 .land .proof-unit .will-print {
   position: relative; z-index: 3;
   margin: -74px auto 0; max-width: 320px;
@@ -161,19 +198,18 @@
 .land .proof-unit .receipt {
   background: var(--glass);
   -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
-  border: 1px solid rgba(255,255,255,.85);
+  border: 1px solid rgba(255, 255, 255, .85);
   border-radius: 18px;
-  box-shadow: var(--sh-3);
+  box-shadow: inset 0 1px 0 var(--glass-rim), var(--shadow-floating);
 }
-.land .proof-unit .receipt-head { color: var(--ink-3); box-shadow: inset 0 -1px 0 var(--hair-soft); }
-.land .receipt-line + .receipt-line { box-shadow: inset 0 1px 0 var(--hair-soft); }
-.land .receipt .status-word.sw-ok { color: var(--accent-ink); }
-.land .receipt .glyph-ok { background: var(--accent); }
-/* one-shot shimmer as the activity lands */
+.land .proof-unit .receipt-head { color: var(--ink-3); box-shadow: inset 0 -1px 0 var(--row-inset); }
+.land .receipt-line + .receipt-line { box-shadow: inset 0 1px 0 var(--row-inset); }
+.land .receipt .status-word.sw-ok { color: var(--flare-2); }
+.land .receipt .glyph-ok { background: var(--ok); }
 .land .will-print.is-printing .receipt::after {
   content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
-  background: linear-gradient(180deg, transparent, rgba(255,255,255,.55) 48%, transparent);
-  transform: translateY(-100%); animation: land-scan 1s var(--swift) .2s 1;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, .55) 48%, transparent);
+  transform: translateY(-100%); animation: land-scan 1s cubic-bezier(.22, 1, .36, 1) .2s 1;
 }
 @keyframes land-scan { to { transform: translateY(115%); } }
 
@@ -181,34 +217,34 @@
 .land .land-cta { margin-top: var(--s-6); }
 
 /* ----------------------------------------------------------------------------
-   CARDS — crisp premium, hairline + lit top edge
+   CARDS — the app's physical surfaces: top-lit tone + light rim + soft base
 ---------------------------------------------------------------------------- */
 .land .card, .land .safety-card, .land .handle-check-card {
-  background: var(--card); border: 1px solid var(--hair);
-  border-radius: 20px; box-shadow: var(--sh-1), inset 0 1px 0 rgba(255,255,255,.9);
+  background: var(--surface-tone); border: 1px solid var(--line);
+  border-radius: 20px; box-shadow: var(--surface-rim), var(--shadow-card);
 }
 
 /* ----------------------------------------------------------------------------
-   HANDLE CHECK — bold input + premium result
+   HANDLE CHECK — sunken well input, flare focus, glass result
 ---------------------------------------------------------------------------- */
 .land .field-input {
-  background: var(--paper); border: 1px solid var(--hair);
-  box-shadow: inset 0 1px 2px rgba(20,18,24,.05); border-radius: 14px;
+  background: var(--sunken); border: 1px solid var(--line);
+  box-shadow: inset 0 1px 2px rgba(23, 20, 15, .05); border-radius: 16px;
 }
-.land .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); background: #fff; }
-.land .field-prefix { color: var(--accent-ink); }
+.land .field-input:focus { border-color: var(--flare); box-shadow: 0 0 0 3px var(--flare-tint); background: #fff; }
+.land .field-prefix { color: var(--flare-2); }
 .land .handle-float {
-  background: var(--card); border: 1px solid var(--hair);
-  border-radius: 18px; box-shadow: var(--sh-2); padding: var(--s-4);
+  background: var(--surface-tone); border: 1px solid var(--line);
+  border-radius: 18px; box-shadow: var(--surface-rim), var(--shadow-floating); padding: var(--s-4);
 }
 
 /* ----------------------------------------------------------------------------
-   HOW IT WORKS — a bold numbered sequence with a live rail
+   HOW IT WORKS — numbered timeline with the flare rail
 ---------------------------------------------------------------------------- */
 .land .steps-list { position: relative; gap: var(--s-5); }
 .land .steps-list::before {
   content: ""; position: absolute; left: 23px; top: 14px; bottom: 14px; width: 2px;
-  background: linear-gradient(180deg, var(--accent), rgba(255,39,87,.25) 70%, transparent);
+  background: linear-gradient(180deg, var(--flare), rgba(255, 45, 85, .25) 70%, transparent);
   border-radius: 2px;
 }
 .land .step-line { grid-template-columns: 48px 1fr; align-items: center; }
@@ -216,139 +252,139 @@
   position: relative; z-index: 1; margin: 0;
   display: inline-flex; align-items: center; justify-content: center;
   width: 48px; height: 26px;
-  background: var(--card); border: 1px solid var(--hair); border-radius: 999px;
-  box-shadow: var(--sh-1); color: var(--accent-ink); font-weight: 600; font-size: 11px;
+  background: var(--surface-tone); border: 1px solid var(--line); border-radius: 999px;
+  box-shadow: var(--surface-rim), var(--shadow-micro);
+  color: var(--flare-2); font-weight: 600; font-size: 11px;
 }
 .land .step-line .what { font-weight: 700; letter-spacing: -.02em; font-size: 17px; }
 .land .step-line .how { color: var(--ink-2); }
 
 /* ----------------------------------------------------------------------------
-   SAFETY — a reassuring trust block, bold check marks
+   SAFETY — trust block, tinted icon tiles
 ---------------------------------------------------------------------------- */
 .land .safety-card ul { gap: var(--s-4); }
 .land .safety-card li { align-items: center; font-size: 15.5px; color: var(--ink); font-weight: 450; }
 .land .safety-card li .icon {
   width: 30px; height: 30px; flex: none; padding: 5px; border-radius: 9px;
-  color: var(--accent); background: var(--accent-tint);
+  color: var(--flare); background: var(--flare-tint);
 }
 
 /* ----------------------------------------------------------------------------
-   PRICING — a bold ticket; the $19/mo is the payoff
+   PRICING — the ledger; $19/mo is the payoff numeral
 ---------------------------------------------------------------------------- */
 .land .pricing-wrap .receipt {
-  border-radius: 18px; border: 1px solid var(--hair);
-  box-shadow: var(--sh-2);
+  background: var(--surface-tone);
+  border-radius: 18px; border: 1px solid var(--line);
+  box-shadow: var(--surface-rim), var(--shadow-card);
 }
 .land .pricing-wrap .receipt-head { letter-spacing: .12em; font-weight: 600; }
 .land .pricing-wrap .receipt-total { padding-block: var(--s-4); align-items: baseline; }
 .land .pricing-wrap .receipt-total > span:first-child { font-weight: 700; font-size: 16px; letter-spacing: -.02em; }
-.land .pricing-wrap .receipt-total .amount { font-size: 34px; font-weight: 800; letter-spacing: -.04em; color: var(--accent); }
-.land .pricing-wrap .receipt-total .amount::after { width: 7px; height: 7px; margin-left: 5px; background: var(--accent); }
+.land .pricing-wrap .receipt-total .amount { font-family: var(--font-mono); font-size: 34px; font-weight: 600; letter-spacing: -.04em; color: var(--flare); font-variant-numeric: tabular-nums; }
+.land .pricing-wrap .receipt-total .amount::after { width: 7px; height: 7px; margin-left: 5px; background: var(--flare); }
 .land .receipt .status-word { color: var(--ink-3); }
 
 /* ----------------------------------------------------------------------------
-   FAQ — a single crisp card, hairline rows
+   FAQ — one crisp card, hairline rows
 ---------------------------------------------------------------------------- */
-.land .faq-list { gap: 0; background: var(--card); border: 1px solid var(--hair); border-radius: 18px; overflow: hidden; box-shadow: var(--sh-1); }
+.land .faq-list { gap: 0; background: var(--surface-tone); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; box-shadow: var(--surface-rim), var(--shadow-card); }
 .land .faq-item { padding: var(--s-5); }
-.land .faq-item + .faq-item { box-shadow: inset 0 1px 0 var(--hair-soft); }
+.land .faq-item + .faq-item { box-shadow: inset 0 1px 0 var(--row-inset); }
 .land .faq-item .q { font-weight: 700; letter-spacing: -.02em; font-size: 16px; }
 .land .faq-item .a { color: var(--ink-2); }
 
 /* ----------------------------------------------------------------------------
-   FINAL CTA — a luminous close
+   FINAL CTA — luminous close
 ---------------------------------------------------------------------------- */
 .land .land-final { position: relative; overflow-x: clip; }
 .land .land-final-glow {
-  position: absolute; left: 50%; top: 34%; transform: translate(-50%,-50%);
+  position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%);
   width: min(520px, 92vw); height: 300px; z-index: 0; pointer-events: none;
-  background: radial-gradient(closest-side, rgba(255,39,87,.18), transparent 70%); filter: blur(8px);
+  background: radial-gradient(closest-side, var(--accent-glow), transparent 70%); filter: blur(8px);
 }
-.land .land-final h2 { position: relative; z-index: 1; font-weight: 800; letter-spacing: -.045em; font-size: clamp(30px, 9vw, 44px); }
+.land .land-final h2 { position: relative; z-index: 1; font-weight: 700; letter-spacing: -.025em; font-size: clamp(30px, 9vw, 44px); }
 .land .land-final .btn { position: relative; z-index: 1; }
 .land .land-sig { color: var(--ink-2); font-weight: 500; }
-.land .land-footer { border-top-color: var(--hair); }
+.land .land-footer { border-top-color: var(--line); }
 
 /* ----------------------------------------------------------------------------
-   DOCK — frosted glass
+   DOCK — frosted glass with the rim
 ---------------------------------------------------------------------------- */
 .land .dock {
   background: var(--glass); -webkit-backdrop-filter: saturate(1.5) blur(20px); backdrop-filter: saturate(1.5) blur(20px);
-  border-top: 1px solid rgba(255,255,255,.85);
-  box-shadow: 0 -8px 30px -12px rgba(20,18,24,.28);
+  border-top: 1px solid var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-rim), 0 -8px 30px -12px rgba(23, 20, 15, .28);
 }
 
 /* ----------------------------------------------------------------------------
-   MOTION — spring-eased, direction-aware reveals
+   MOTION — the app's spring language; direction-aware staggered reveals
 ---------------------------------------------------------------------------- */
 .land.js [data-rise] { opacity: 0; transform: translateY(24px); }
 .land.js [data-rise].is-in {
   opacity: 1; transform: none;
-  transition: opacity .6s var(--swift), transform .75s var(--spring);
+  transition: opacity .6s cubic-bezier(.22, 1, .36, 1), transform .75s cubic-bezier(.34, 1.56, .64, 1);
   transition-delay: calc(var(--i, 0) * 80ms);
 }
 .land.js [data-rise].rise-hero { transform: none; }
-.land.js [data-rise].rise-hero.is-in { transform: none; transition: opacity .6s var(--swift); }
+.land.js [data-rise].rise-hero.is-in { transform: none; transition: opacity .6s cubic-bezier(.22, 1, .36, 1); }
 
 /* ----------------------------------------------------------------------------
-   DESKTOP — an intentional, scaled canvas
+   DESKTOP — real wide compositions, not a centered phone column.
+   Hero: split grid (statement + CTA left, living proof right).
+   Steps + safety: 3-across bands. No marooned columns.
 ---------------------------------------------------------------------------- */
 @media (min-width: 720px) {
-  .land .wrap { width: min(100% - var(--s-6) * 2, 680px); }
-  .land .land-hero { padding: var(--s-8) 0; }
-  .land .land-hero h1 { font-size: clamp(72px, 8vw, 94px); }
-  .land .land-hero .hero-sub { font-size: 20px; }
-  .land .proof-unit { max-width: 400px; }
+  .land .wrap { width: min(100% - var(--s-6) * 2, 720px); }
+  .land .land-hero h1 { font-size: clamp(64px, 7.2vw, 88px); }
+  .land .land-hero .hero-sub { font-size: 19px; }
+}
+@media (min-width: 1024px) {
+  .land .wrap { width: min(100% - var(--s-8) * 2, 1120px); }
+  .land .land-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+    grid-template-areas: "copy proof" "cta proof";
+    align-items: center; column-gap: var(--s-8);
+    text-align: left;
+    padding: var(--s-7) 0 var(--s-8);
+    min-height: 86svh;
+  }
+  .land .hero-copy { grid-area: copy; align-self: end; }
+  .land .hero-copy .hero-sub { margin-inline: 0; max-width: 38ch; }
+  .land .land-hero h1 { font-size: clamp(72px, 6.4vw, 104px); }
+  .land .proof-unit { grid-area: proof; margin: 0; justify-self: center; }
+  .land .hero-cta { grid-area: cta; align-self: start; text-align: left; }
+  .land .hero-cta .land-cta { text-align: left; margin-top: var(--s-5); }
+  .land .hero-cta .proof-caption { text-align: left; margin-top: var(--s-4); }
   .land .clip-card { max-width: 380px; }
   .land .proof-unit .will-print { max-width: 340px; }
+  /* sections become designed bands, centered content zones */
+  .land .land-section { padding-top: var(--s-8); }
+  .land .handle-check-card { max-width: 560px; }
+  .land .steps-list {
+    max-width: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-6);
+  }
+  .land .steps-list::before {
+    left: 24px; right: 24px; top: 13px; bottom: auto; width: auto; height: 2px;
+    background: linear-gradient(90deg, var(--flare), rgba(255, 45, 85, .25) 70%, transparent);
+  }
+  /* pill above, text below — the rail crosses only the pill row */
+  .land .step-line { grid-template-columns: 1fr; align-items: start; row-gap: var(--s-3); justify-items: start; }
+  .land .safety-card { max-width: 860px; }
+  .land .safety-card ul { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-5); }
+  .land .safety-card li { flex-direction: column; align-items: flex-start; gap: var(--s-3); }
+  .land .faq-list { max-width: 720px; }
+  .land .land-final { padding: calc(var(--s-8) * 1.4) 0; }
 }
 
 /* ----------------------------------------------------------------------------
-   REDUCED MOTION
+   REDUCED MOTION — static result, no loops, everything visible
 ---------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   .land .btn:not(.btn-quiet)::after { display: none; }
-  .land .clip-card, .land .hero-spot, .land .eyebrow-dot::after { animation: none; }
+  .land .clip-card, .land .hero-spot, .land .eyebrow-dot::after,
+  .land .clip-chips .clip-chip:first-child, .land-atmos .land-grid { animation: none; }
   .land .will-print.is-printing .receipt::after { display: none; }
   .land.js [data-rise] { opacity: 1; transform: none; }
 }
-
-/* ----------------------------------------------------------------------------
-   FREEZE GUARD — the landing keeps its shipped palette and type no matter what
-   system.css tokens become (new app themes, dark mode). Everything the landing
-   inherits from system.css is pinned to the values it shipped with.
----------------------------------------------------------------------------- */
-.land {
-  color-scheme: light;
-  --bg: #FAFAF8; --paper: #FBFAF9; --paper-2: #F3F1EE;
-  --surface: #FFFFFF; --fill: #F2F2EE; --sunken: #F2F2EE;
-  --ink: #141317; --ink-2: #565159; --ink-3: #8C868F;
-  --sub: #565159; --faint: #8C868F;
-  --hairline: #E6E6E1; --line: #E6E6E1;
-  --border-strong: #D8D8D2; --line-strong: #D8D8D2;
-  --row-inset: rgba(22, 22, 26, .06);
-  --accent: #FF2757; --flare: #FF2757;
-  --accent-press: #E01047; --flare-2: #E01047;
-  --accent-soft: rgba(255, 39, 87, .10); --flare-tint: rgba(255, 39, 87, .10);
-  --accent-glow: rgba(255, 39, 87, .20);
-  --live: #FF2757;
-  --ok: #12A150; --ok-tint: rgba(18, 161, 80, .12);
-  --err: #E5342A; --err-soft: rgba(229, 52, 42, .10);
-  --grad-flare: var(--accent);
-  --glow-flare: none; --glow-flare-lg: none; --inset-hi: none;
-  --shadow-micro: 0 1px 2px rgba(22, 22, 26, .05);
-  --shadow-card: 0 1px 2px rgba(22, 22, 26, .05);
-  --shadow-pop: 0 8px 24px rgba(22, 22, 26, .12), 0 2px 6px rgba(22, 22, 26, .08);
-  --shadow-floating: 0 8px 24px rgba(22, 22, 26, .12), 0 2px 6px rgba(22, 22, 26, .08);
-  --glass: rgba(255, 255, 255, .72);
-  --glass-line: rgba(20, 18, 24, .10);
-  --scrim: rgba(22, 22, 26, .32);
-  --r-s: 8px; --r-m: 10px; --r-l: 12px; --r-xl: 16px;
-  --r-sm: 8px; --r-chip: 10px; --r-field: 12px; --r-card: 16px;
-  --font-display: var(--font-ui);
-}
-.land .display, .land .wordmark-text { font-family: var(--font-ui); }
-.land .wordmark-text { letter-spacing: -.05em; }
-.land .display { letter-spacing: -.045em; line-height: 1.03; }
-.land h2.display { font-weight: 700; letter-spacing: -.035em; }
-.land .eyebrow { font-family: var(--font-ui); }

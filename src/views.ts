@@ -445,9 +445,11 @@ export function landingPage(): string {
   </nav>
 
   <header class="land-hero" id="main">
-    <p class="eyebrow" data-rise style="--i:0"><span class="eyebrow-dot"></span>For Whatnot sellers</p>
-    <h1 class="display" data-rise style="--i:1">Clip it<span class="period">.</span><br>It posts <span class="hl">itself</span><span class="period">.</span></h1>
-    <p class="hero-sub" data-rise style="--i:2">Every clip from your live, posted to Instagram Reels + TikTok. Automatic.</p>
+    <div class="hero-copy">
+      <p class="eyebrow" data-rise style="--i:0"><span class="eyebrow-dot"></span>For Whatnot sellers</p>
+      <h1 class="display" data-rise style="--i:1">Clip it<span class="period">.</span><br>It posts <span class="hl">itself</span><span class="period">.</span></h1>
+      <p class="hero-sub" data-rise style="--i:2">Every clip from your live, posted to Instagram Reels + TikTok. Automatic.</p>
+    </div>
 
     <div class="proof-unit" id="proof-unit">
       <span class="hero-spot" aria-hidden="true"></span>
@@ -462,11 +464,13 @@ export function landingPage(): string {
       </figure>
       ${proofReceipt}
     </div>
-    <p class="proof-caption fine" data-rise style="--i:4">My real shop. Check my Reels after any live. &mdash; ${esc(SELLER_NAME)}, <a class="mono" href="https://www.whatnot.com/user/${SELLER_WN}" target="_blank" rel="noopener">@${SELLER_WN}</a></p>
 
-    <div class="land-cta" data-rise style="--i:5">
-      <a class="btn" href="/signup">Try it on your next show</a>
-      <p class="fine">First week free &middot; $19/mo &middot; cancel in two taps</p>
+    <div class="hero-cta">
+      <p class="proof-caption fine" data-rise style="--i:4">My real shop. Check my Reels after any live. &mdash; ${esc(SELLER_NAME)}, <a class="mono" href="https://www.whatnot.com/user/${SELLER_WN}" target="_blank" rel="noopener">@${SELLER_WN}</a></p>
+      <div class="land-cta" data-rise style="--i:5">
+        <a class="btn" href="/signup">Try it on your next show</a>
+        <p class="fine">First week free &middot; $19/mo &middot; cancel in two taps</p>
+      </div>
     </div>
   </header>
 
