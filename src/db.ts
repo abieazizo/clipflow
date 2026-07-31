@@ -202,10 +202,11 @@ export async function createAccount(email: string, password: string): Promise<Ac
   const now = new Date();
   // Card-first: a new account starts LOCKED (no card, no trial). The 1-week
   // trial + trialEndsAt begin when they add a card at Checkout.
-  // New accounts start in MANUAL mode (default) — they post when they choose to.
+  // New accounts start in AUTO mode — the product's promise is "it posts
+  // itself"; the Home toggle makes switching to manual one tap.
   d.prepare(`
     INSERT INTO accounts (id, email, passwordHash, createdAt, captionTemplate, hashtags, plan, trialEndsAt, isAdmin, postingMode)
-    VALUES (?, ?, ?, ?, ?, ?, 'free', NULL, ?, 'manual')
+    VALUES (?, ?, ?, ?, ?, ?, 'free', NULL, ?, 'auto')
   `).run(
     id, normalized, hashPassword(password), now.toISOString(),
     DEFAULT_CAPTION_TEMPLATE, JSON.stringify(DEFAULT_HASHTAGS),

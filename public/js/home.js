@@ -68,22 +68,34 @@
     }
   }
 
-  // "Check for clips now" — the check console plays honest live theater:
-  // each staged line states what the /check pass is REALLY doing (listing the
-  // public clips page, then reading clip pages). Result lines come only from
-  // the actual response — no invented progress. ON AIR keeps its capture
-  // choreography; reduced-motion goes straight to the reload.
+  // "Check for clips now" — a NARRATED live console. Every line on a real run
+  // states what the /check pass genuinely does (list the public clips page →
+  // read clip pages → hand to Instagram/TikTok); results come only from the
+  // real response. The one exception is the clearly-labeled first-run DEMO
+  // (zero posts ever, nothing found): sample data, posts nothing, teaches the
+  // loop. Reduced-motion jumps straight to end states.
   var check = $("[data-check-now]");
   var checkConsole = $("[data-check-console]");
+  var demoEligible = Boolean(checkConsole && checkConsole.hasAttribute("data-demo"));
+  var consolePlatforms = checkConsole
+    ? (checkConsole.getAttribute("data-platforms") || "").split(",").filter(Boolean)
+    : [];
   var handle = (function () {
     var el = $("[data-hello-name]");
     var m = el ? el.textContent.match(/@([A-Za-z0-9._-]+)/) : null;
     return m ? m[1] : "your shop";
   })();
+  var platformName = { ig: "Instagram", tt: "TikTok" };
 
-  function theaterLine(text, state) {
-    var line = $("[data-check-line]", checkConsole);
-    line.innerHTML = "";
+  function linesBox() { return $("[data-check-lines]", checkConsole); }
+  function clearLines() {
+    linesBox().innerHTML = "";
+    var rec = $("[data-check-receipt]", checkConsole);
+    rec.hidden = true; rec.innerHTML = "";
+  }
+  function addLine(text, state, demo) {
+    var line = document.createElement("p");
+    line.className = "check-line mono is-in";
     if (state === "spin") {
       var s = document.createElement("span");
       s.className = "check-spin";
@@ -95,6 +107,23 @@
       line.appendChild(g);
     }
     line.appendChild(document.createTextNode(text));
+    if (demo) {
+      var d = document.createElement("span");
+      d.className = "demo-chip";
+      d.textContent = "DEMO";
+      line.appendChild(d);
+    }
+    linesBox().appendChild(line);
+    return line;
+  }
+  function completeLine(line, text) {
+    line.innerHTML = "";
+    var g = document.createElement("span");
+    g.className = "check-okmark";
+    g.textContent = "✓";
+    line.appendChild(g);
+    line.appendChild(document.createTextNode(text));
+    return line;
   }
   function theaterSub(text) {
     var sub = $("[data-check-subline]", checkConsole);
@@ -104,77 +133,171 @@
   function theaterShow() {
     $("[data-check-idle]", checkConsole).hidden = true;
     $("[data-check-live]", checkConsole).hidden = false;
+    clearLines();
+    $("[data-check-subline]", checkConsole).hidden = true;
+    $("[data-check-actions]", checkConsole).hidden = true;
   }
   function theaterIdle() {
     $("[data-check-idle]", checkConsole).hidden = false;
     $("[data-check-live]", checkConsole).hidden = true;
-    $("[data-check-subline]", checkConsole).hidden = true;
-    $("[data-check-actions]", checkConsole).hidden = true;
   }
 
-  if (check) check.addEventListener("click", function () {
+  // sequential narration: [text, holdMs] steps; each completes to ✓ before the
+  // next appears. Reduced-motion renders every step complete at once.
+  function narrate(steps, demo, done) {
+    if (CF.reduced) {
+      steps.forEach(function (st) { addLine(st[0], "ok", demo); });
+      if (done) done();
+      return;
+    }
+    var i = 0;
+    var run = function () {
+      if (i >= steps.length) { if (done) done(); return; }
+      var st = steps[i];
+      var line = addLine(st[0], "spin", demo);
+      setTimeout(function () {
+        completeLine(line, st[0]);
+        if (demo) {
+          var d = document.createElement("span");
+          d.className = "demo-chip";
+          d.textContent = "DEMO";
+          line.appendChild(d);
+        }
+        i++;
+        run();
+      }, st[1]);
+    };
+    run();
+  }
+
+  function demoReceipt() {
+    var rec = $("[data-check-receipt]", checkConsole);
+    rec.innerHTML = "";
+    var rows = [
+      ["Your clip", "9:41", "DEMO"],
+      ["Posted — Instagram Reels", "9:42", "✓"],
+      ["Posted — TikTok", "9:42", "✓"],
+    ];
+    rows.forEach(function (r0, idx) {
+      var row = document.createElement("div");
+      row.className = "cr-row";
+      row.style.setProperty("--i", String(idx));
+      var t = document.createElement("span");
+      t.className = "cr-time mono"; t.textContent = r0[1];
+      var w = document.createElement("span");
+      w.className = "cr-what"; w.textContent = r0[0];
+      var m = document.createElement("span");
+      m.className = "cr-mark mono" + (r0[2] === "✓" ? " is-ok" : ""); m.textContent = r0[2];
+      row.appendChild(t); row.appendChild(w); row.appendChild(m);
+      rec.appendChild(row);
+    });
+    var note = document.createElement("p");
+    note.className = "cr-note mono";
+    note.textContent = "DEMO — nothing was posted";
+    rec.appendChild(note);
+    rec.hidden = false;
+    requestAnimationFrame(function () { rec.classList.add("is-on"); });
+  }
+
+  function runCheck(fromAuto) {
     var onairEl = $("[data-onair-console]");
-    var stage2 = null;
-    var label;
-    if (checkConsole) {
+    var lookLine = null;
+    if (checkConsole && !fromAuto) {
       theaterShow();
-      theaterLine("Looking for clips on @" + handle + "…", "spin");
-      stage2 = setTimeout(function () { theaterLine("Reading clip pages…", "spin"); }, 2400);
-    } else {
-      label = check.textContent;
+      lookLine = addLine("Looking on Whatnot @" + handle + "…", "spin");
+    } else if (check && !checkConsole && !fromAuto) {
+      var label = check.textContent;
       check.classList.add("is-loading");
       check.textContent = "Checking…";
     }
+
     CF.jfetch("/check", {}).then(function (r) {
-      if (stage2) clearTimeout(stage2);
-      if (!checkConsole) {
+      if (check && !checkConsole && !fromAuto) {
         check.classList.remove("is-loading");
         check.textContent = label;
       }
 
       if (r.code === "found") {
         var n = r.found || 0;
-        if (checkConsole) {
-          theaterLine("Found " + n + " clip" + (n === 1 ? "" : "s") + " — queued for Instagram + TikTok", "ok");
-          theaterSub("Posting now — usually under two minutes. Watch it land below.");
+        if (checkConsole && !fromAuto) {
+          completeLine(lookLine, "Found " + n + " new clip" + (n === 1 ? "" : "s"));
+          var steps = [];
+          consolePlatforms.forEach(function (p) {
+            steps.push(["Uploading to " + (platformName[p] || p) + "…", 950]);
+          });
+          narrate(steps, false, function () {
+            addLine("Posted — live on " + (consolePlatforms.length > 1 ? "Reels + TikTok" : platformName[consolePlatforms[0]] || "your page") + " in about a minute", "ok");
+            theaterSub("Watch it land below.");
+            setTimeout(function () { location.reload(); }, CF.reduced ? 700 : 1700);
+          });
+          return;
         }
         if (onairEl && !CF.reduced) {
           onairEl.classList.add("is-capturing");
           setTimeout(function () { location.reload(); }, 2600);
         } else {
-          setTimeout(function () { location.reload(); }, checkConsole ? 2200 : 2500);
+          setTimeout(function () { location.reload(); }, 2200);
         }
         return;
       }
 
-      if (checkConsole && r.code === "none") {
+      if (checkConsole && !fromAuto && r.code === "none") {
+        if (demoEligible && !(r.alreadyPosted > 0)) {
+          // FIRST-RUN DEMO: nothing real to show yet — teach the loop with
+          // clearly-labeled sample data. Posts nothing.
+          completeLine(lookLine, "No clips yet — here's what WILL happen");
+          lookLine.appendChild((function () { var d = document.createElement("span"); d.className = "demo-chip"; d.textContent = "DEMO"; return d; })());
+          narrate([
+            ["Found 1 new clip", 800],
+            ["Uploading to Instagram…", 950],
+            ["Uploading to TikTok…", 950],
+          ], true, function () {
+            addLine("Posted — Reels + TikTok", "ok", true);
+            demoReceipt();
+            theaterSub("That's the whole job. Go live, clip, make it public — and this happens for real.");
+            setTimeout(theaterIdle, 22000);
+          });
+          return;
+        }
         if (r.alreadyPosted > 0) {
-          theaterLine("All caught up — nothing new to post", "ok");
+          completeLine(lookLine, "All caught up — nothing new to post");
           theaterSub("Every public clip on @" + handle + " is already out.");
         } else {
-          theaterLine("No public clips on @" + handle + " yet", "");
-          theaterSub("During your live: tap Clip, then flip “Make it public”. It posts from there.");
+          completeLine(lookLine, "Nothing new yet");
+          lookLine.querySelector(".check-okmark").textContent = "·";
+          theaterSub("Clip during your live, make it public, and tap Check again.");
           $("[data-check-actions]", checkConsole).hidden = false;
         }
-        setTimeout(theaterIdle, 8000);
+        setTimeout(theaterIdle, 9000);
         return;
       }
 
-      if (checkConsole) theaterIdle();
-      if (r.message) CF.toast(r.message, { err: !!(r.code && ["paused", "no_username", "locked", "no_connection"].indexOf(r.code) >= 0), ms: 5000 });
-      if (r.code === "locked") setTimeout(function () { location.href = "/billing"; }, 1800);
+      if (checkConsole && !fromAuto) theaterIdle();
+      if (!fromAuto && r.message) CF.toast(r.message, { err: !!(r.code && ["paused", "no_username", "locked", "no_connection"].indexOf(r.code) >= 0), ms: 5000 });
+      if (r.code === "locked" && !fromAuto) setTimeout(function () { location.href = "/billing"; }, 1800);
     });
-  });
+  }
 
-  // auto-post toggle on the console — optimistic, plain-language sub follows
+  if (check) check.addEventListener("click", function () { runCheck(false); });
+
+  // ON AIR + auto mode: the console checks by itself in the background and
+  // posts as clips appear — hands-off, exactly like the engine, just sooner.
+  var onairAuto = $("[data-onair-console][data-auto=\"1\"]");
+  if (onairAuto && !/[?&]preview=/.test(location.search)) {
+    setInterval(function () {
+      if (document.visibilityState === "visible") runCheck(true);
+    }, 180000);
+  }
+
+  // auto-post toggle on the console — optimistic, consequences in plain words
   var modeToggle = $("[data-check-console] [data-mode-toggle]");
   if (modeToggle) modeToggle.addEventListener("change", function () {
     var auto = modeToggle.checked;
     var sub = $("[data-auto-sub]");
     var apply = function (isAuto) {
       if (sub) sub.textContent = isAuto
-        ? "On — checks every 5 minutes and posts new public clips by itself"
-        : "Off — clips post only when you tap Check";
+        ? "On — the moment you clip, it posts itself to Reels + TikTok"
+        : "Off — clips wait here until you tap Check";
     };
     apply(auto);
     CF.jfetch("/settings", { onlyMode: "1", postingMode: auto ? "auto" : "manual" }).then(function (r) {

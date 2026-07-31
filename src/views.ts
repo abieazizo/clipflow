@@ -857,6 +857,7 @@ export function welcomePage(
           <input type="hidden" name="csrf" value="${esc(csrf)}">
           <button class="btn btn-block" type="submit" data-loading-text="Opening&hellip;">Open my dashboard</button>
         </form>
+        <p class="fine" style="text-align:center">Run your first Check from Home &mdash; we&rsquo;ll show you exactly what happens.</p>
         <button type="button" class="wiz-quiet-link" data-sheet-open="founder" style="margin-inline:auto">Who made this?</button>
       </div>
     </section>`;
@@ -1115,7 +1116,7 @@ export function dashboard(
     // actually finds one (home.js flips .is-capturing before reloading).
     const failed = extras.stats?.failed ?? 0;
     hero = `
-    <section class="onair-console" data-onair-console data-rise style="--i:1">
+    <section class="onair-console" data-onair-console data-auto="${extras.mode !== "manual" ? "1" : "0"}" data-rise style="--i:1">
       <div class="oc-head">
         <span class="oc-badge"><span class="oc-dot"></span>ON AIR</span>
         ${extras.lastCheckedAt ? `<span class="oc-since mono">checked <span data-check-tick data-ts="${esc(extras.lastCheckedAt)}">${esc(relShort(extras.lastCheckedAt))}</span> ago</span>` : ""}
@@ -1145,8 +1146,12 @@ export function dashboard(
     const failed = extras.stats?.failed ?? 0;
     const postedWeek = extras.stats?.postedWeek ?? 0;
     const auto = extras.mode !== "manual";
+    const hasPosts = Boolean(extras.setup?.hasPosts);
     const presetLabel = acct.captionPreset === "custom" ? "Your own words"
       : acct.captionPreset[0].toUpperCase() + acct.captionPreset.slice(1);
+    const platforms = [acct.instagram ? "ig" : "", acct.tiktok ? "tt" : ""].filter(Boolean).join(",");
+    // MOBILE-FIRST ORDER: statement → THE CONSOLE (the hero action, above the
+    // fold at 390px) → the four-stage pipeline as the explainer → failures.
     hero = `
     <section class="desk-hero" data-rise style="--i:1">
       <p class="kicker">This week</p>
@@ -1158,31 +1163,26 @@ export function dashboard(
           <p class="hero-sub-line">Reels + TikTok, on their own.</p>
         </div>
       </div>` : `
-      <h2 class="display hero-line-lg">Your next clip posts itself<span class="period">.</span></h2>
-      <p class="hero-sub-line">Here&rsquo;s the whole machine &mdash; nothing else to learn:</p>`}
-      <div class="pipe" role="list" aria-label="How posting works">
-        <div class="pipe-step" role="listitem"><span class="pipe-n mono">1</span><p class="pipe-t">Go live on Whatnot</p></div>
-        <div class="pipe-step" role="listitem"><span class="pipe-n mono">2</span><p class="pipe-t">Tap Clip &middot; make it <strong>public</strong></p></div>
-        <div class="pipe-step is-live" role="listitem"><span class="pipe-n mono">3</span><p class="pipe-t">We catch it${extras.lastCheckedAt ? `<span class="pipe-sub mono">checked <span data-check-tick data-ts="${esc(extras.lastCheckedAt)}">${esc(relShort(extras.lastCheckedAt))}</span> ago</span>` : `<span class="pipe-sub mono">every 5 minutes</span>`}</p></div>
-        <div class="pipe-step" role="listitem"><span class="pipe-n mono">4</span><p class="pipe-t">Posted <span class="pipe-badges">${icon("instagram")}${icon("tiktok")}</span></p></div>
-      </div>
-      ${failed > 0 ? `<p class="fail-row">${failed} post${failed === 1 ? "" : "s"} didn&rsquo;t go out &mdash; <a href="/history?filter=failed">Fix in Clips</a></p>` : ""}
+      <h2 class="display hero-line-lg">Your next clip posts itself<span class="period">.</span></h2>`}
     </section>
 
-    <section class="card check-console" data-rise style="--i:2" data-check-console>
+    <section class="card check-console" data-rise style="--i:2" data-check-console data-platforms="${platforms}"${hasPosts ? "" : ` data-demo="1"`}>
       <div data-check-idle>
         <button class="btn btn-block" type="button" data-check-now>Check for clips now</button>
-        <p class="fine check-hint">Scans your public clips on <span class="mono">@${esc(uname)}</span> in a few seconds.</p>
+        <p class="fine check-hint">${hasPosts
+          ? `Scans your public clips on <span class="mono">@${esc(uname)}</span> in a few seconds.`
+          : `First time? We&rsquo;ll show you exactly what happens.`}</p>
       </div>
       <div class="check-live" data-check-live hidden aria-live="polite">
-        <p class="check-line mono" data-check-line></p>
+        <div class="check-lines" data-check-lines></div>
+        <div class="check-receipt" data-check-receipt hidden></div>
         <p class="check-subline" data-check-subline hidden></p>
         <p data-check-actions hidden><button class="howto-btn" type="button" data-sheet-open="clip-demo">${icon("scissors")}How to clip</button></p>
       </div>
       <div class="console-rows">
         <label class="grow">
           ${icon("sparkles")}
-          <span class="grow-label">Post automatically<span class="grow-sub" data-auto-sub>${auto ? "On &mdash; checks every 5 minutes and posts new public clips by itself" : "Off &mdash; clips post only when you tap Check"}</span></span>
+          <span class="grow-label">Post automatically<span class="grow-sub" data-auto-sub>${auto ? "On &mdash; the moment you clip, it posts itself to Reels + TikTok" : "Off &mdash; clips wait here until you tap Check"}</span></span>
           <span class="switch"><input type="checkbox" data-mode-toggle ${auto ? "checked" : ""}><span class="knob"></span></span>
         </label>
         <button type="button" class="grow" data-sheet-open="caption">
@@ -1192,6 +1192,17 @@ export function dashboard(
           ${icon("chevron-right", "chev")}
         </button>
       </div>
+    </section>
+
+    <section class="desk-pipe" data-rise style="--i:3">
+      <p class="kicker">How it works</p>
+      <div class="pipe" role="list" aria-label="How posting works">
+        <div class="pipe-step" role="listitem"><span class="pipe-n mono">1</span><p class="pipe-t">Go live on Whatnot</p></div>
+        <div class="pipe-step" role="listitem"><span class="pipe-n mono">2</span><p class="pipe-t">Tap Clip &middot; make it <strong>public</strong></p></div>
+        <div class="pipe-step is-live" role="listitem"><span class="pipe-n mono">3</span><p class="pipe-t">We catch it${extras.lastCheckedAt ? `<span class="pipe-sub mono">checked <span data-check-tick data-ts="${esc(extras.lastCheckedAt)}">${esc(relShort(extras.lastCheckedAt))}</span> ago</span>` : `<span class="pipe-sub mono">every 5 minutes</span>`}</p></div>
+        <div class="pipe-step" role="listitem"><span class="pipe-n mono">4</span><p class="pipe-t">Posted <span class="pipe-badges">${icon("instagram")}${icon("tiktok")}</span></p></div>
+      </div>
+      ${failed > 0 ? `<p class="fail-row">${failed} post${failed === 1 ? "" : "s"} didn&rsquo;t go out &mdash; <a href="/history?filter=failed">Fix in Clips</a></p>` : ""}
       ${clips.length === 0 ? `<p class="console-howto"><button class="howto-btn" type="button" data-sheet-open="clip-demo">${icon("scissors")}See how to clip</button></p>` : ""}
     </section>`;
   }

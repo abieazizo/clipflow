@@ -1404,12 +1404,54 @@ body.sheet-locked { overflow: hidden; }
 .pipe-badges { display: inline-flex; gap: 4px; vertical-align: -3px; margin-left: 2px; }
 .pipe-badges .icon { width: 15px; height: 15px; color: var(--ink-2); }
 
-/* THE CHECK CONSOLE — the page's power action + honest live progress theater */
-.check-console { margin-top: var(--s-5); }
+/* THE CHECK CONSOLE — the page's power action + narrated live progress */
+.check-console { margin-top: var(--s-4); }
 .check-console .check-hint { text-align: center; margin-top: var(--s-3); }
-.check-live { min-height: 84px; display: grid; align-content: center; justify-items: center; gap: var(--s-2); text-align: center; }
-.check-line { font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; gap: var(--s-2); font-variant-numeric: tabular-nums; }
-.check-subline { font-size: 13px; color: var(--ink-2); max-width: 40ch; }
+.check-live { min-height: 84px; display: grid; align-content: center; justify-items: start; gap: var(--s-2); text-align: left; }
+.check-lines { display: grid; gap: var(--s-2); width: 100%; }
+.check-line { font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: var(--s-2); font-variant-numeric: tabular-nums; }
+.js .check-line.is-in { animation: check-line-in .3s var(--ease-out) both; }
+@keyframes check-line-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.check-subline { font-size: 13px; color: var(--ink-2); max-width: 44ch; }
+.demo-chip {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: .08em;
+  color: var(--warn); background: var(--warn-tint);
+  padding: 2px 6px; border-radius: var(--r-pill);
+  flex: none;
+}
+/* the demo's mini receipt — prints its rows, clearly labeled, posts nothing */
+.check-receipt {
+  width: 100%;
+  background: var(--surface-tone);
+  border: 1px solid var(--line);
+  border-radius: var(--r-chip);
+  box-shadow: var(--surface-rim), var(--shadow-micro);
+  overflow: hidden;
+  margin-top: var(--s-2);
+}
+.js .check-receipt .cr-row { opacity: 0; transform: translateY(6px); }
+.js .check-receipt.is-on .cr-row {
+  opacity: 1; transform: none;
+  transition: opacity .35s var(--ease-out), transform .35s var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 140ms);
+}
+.cr-row {
+  display: grid; grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: var(--s-2); align-items: center;
+  padding: 10px var(--s-3);
+  font-size: 12.5px;
+}
+.cr-row + .cr-row { box-shadow: inset 0 1px 0 var(--row-inset); }
+.cr-time { color: var(--ink-3); font-size: 11px; }
+.cr-what { font-weight: 600; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-mark { font-size: 10.5px; color: var(--warn); }
+.cr-mark.is-ok { color: var(--ok); }
+.cr-note {
+  padding: var(--s-2) var(--s-3);
+  box-shadow: inset 0 1px 0 var(--row-inset);
+  font-size: 10px; letter-spacing: .08em; color: var(--warn); font-weight: 700;
+}
+.desk-pipe { margin-top: var(--s-5); }
 .check-spin {
   width: 14px; height: 14px; border-radius: 50%; flex: none;
   border: 2px solid var(--flare-tint); border-top-color: var(--flare);
