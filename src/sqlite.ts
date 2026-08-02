@@ -164,6 +164,10 @@ function migrate(d: Database.Database): void {
   // show's "your clips are still private" nudge was handled (sent or resolved).
   ensureColumn(d, "accounts", "lastLiveAt", "TEXT NULL");
   ensureColumn(d, "accounts", "publishNudgeAt", "TEXT NULL");
+
+  // Session invalidation epoch: cookies embed this number; bumping it kills
+  // every outstanding session server-side (logout, password change/reset).
+  ensureColumn(d, "accounts", "sessionEpoch", "INTEGER NOT NULL DEFAULT 0");
 }
 
 /** The stock template new accounts start with — also the migration's "untouched" marker. */

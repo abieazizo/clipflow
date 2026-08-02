@@ -689,6 +689,25 @@ textarea.field-input { padding: var(--s-3) var(--s-4); min-height: 96px; resize:
 .banner-warn > .icon { color: var(--warn); }
 .banner-warn a { font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; }
 .banner-warn a .icon { width: 13px; height: 13px; }
+.banner-link {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-weight: 700; color: var(--flare);
+  min-height: 32px;
+}
+.banner-link .icon { width: 14px; height: 14px; }
+
+/* the make-it-public fix-it steps */
+.pub-steps { display: grid; gap: var(--s-4); margin-top: var(--s-4); }
+.pub-steps li { display: flex; gap: var(--s-3); align-items: flex-start; }
+.pub-n {
+  width: 26px; height: 26px; border-radius: 50%; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--flare); color: #fff;
+  font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;
+  box-shadow: var(--glow-flare);
+}
+.pub-t { font-weight: 600; font-size: 15px; letter-spacing: -.01em; color: var(--ink); }
+.pub-s { font-size: 13px; color: var(--ink-3); margin-top: 1px; }
 
 /* ----------------------------------------------------------------------------
    Progress dots (wizard)

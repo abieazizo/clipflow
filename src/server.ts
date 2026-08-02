@@ -35,7 +35,7 @@ import {
   isActive, accountState, trialDaysLeft, TRIAL_DAYS,
   postStats, postTotals, listPosts, getPostById, updatePost,
   createToken, consumeToken, peekToken, logEvent, adminStats, adminUserList, adminSeries, recentEvents, hasPostsSince,
-  enqueueOrphan,
+  enqueueOrphan, ownsClip, bumpSessionEpoch,
   type Account,
 } from "./db.js";
 import { recentClips, startEngine, clipsDir, engineStatus, checkAccount } from "./engine.js";
@@ -86,11 +86,14 @@ const CSP = [
   "form-action 'self' https://checkout.stripe.com https://billing.stripe.com",
 ].join("; ");
 
+const IS_HTTPS = settings.baseUrl.startsWith("https:");
+
 app.use((_req, res, next) => {
   res.setHeader("Content-Security-Policy", CSP);
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("X-Frame-Options", "DENY");
+  if (IS_HTTPS) res.setHeader("Strict-Transport-Security", "max-age=15552000; includeSubDomains");
   next();
 });
 
@@ -193,26 +196,26 @@ function readCookies(req: express.Request): Record<string, string> {
   return out;
 }
 
+/** Cookie = "<accountId>.<epoch>.<issuedAt>.<hmac>". The epoch must match the
+    account's sessionEpoch — bumping that column (logout, password change or
+    reset) invalidates every outstanding cookie SERVER-SIDE, so a stolen or
+    stale token dies with it. Older cookie formats are rejected outright. */
 function currentAccount(req: express.Request): Account | null {
   const raw = readCookies(req)[SESSION_COOKIE];
   if (!raw) return null;
   const parts = raw.split(".");
-  if (parts.length === 3) {
-    const [id, ts, sig] = parts;
-    if (!/^[0-9a-f]+$/i.test(sig) || !safeEqualHex(sig, sign(`${id}.${ts}`))) return null;
-    return getAccount(id);
-  }
-  if (parts.length === 2) {
-    const [id, sig] = parts;
-    if (!/^[0-9a-f]+$/i.test(sig) || !safeEqualHex(sig, sign(id))) return null;
-    return getAccount(id);
-  }
-  return null;
+  if (parts.length !== 4) return null;
+  const [id, epoch, ts, sig] = parts;
+  if (!/^\d+$/.test(epoch) || !/^[0-9a-f]+$/i.test(sig)) return null;
+  if (!safeEqualHex(sig, sign(`${id}.${epoch}.${ts}`))) return null;
+  const acct = getAccount(id);
+  if (!acct || acct.sessionEpoch !== Number(epoch)) return null;
+  return acct;
 }
 
 /** Fresh issuedAt on every call = session rotation on login/reset. */
-function setSession(res: express.Response, accountId: string): void {
-  const base = `${accountId}.${Date.now()}`;
+function setSession(res: express.Response, accountId: string, epoch: number): void {
+  const base = `${accountId}.${epoch}.${Date.now()}`;
   res.setHeader(
     "Set-Cookie",
     `${SESSION_COOKIE}=${encodeURIComponent(`${base}.${sign(base)}`)}; ${cookieAttrs(60 * 60 * 24 * 30)}`
@@ -411,7 +414,7 @@ app.post("/signup", async (req, res) => {
   // Verification email (console-logged in dev). Never blocks signup.
   const token = createToken(acct.id, "verify", 24 * 60);
   sendMail(verifyEmailTpl(acct.email, `${settings.baseUrl}/verify/${token}`)).catch(() => {});
-  setSession(res, acct.id);
+  setSession(res, acct.id, acct.sessionEpoch);
   res.redirect("/dashboard");
 });
 
@@ -436,11 +439,15 @@ app.post("/login", async (req, res) => {
   const next = safeNext((req.query as Record<string, unknown>).next);
   const acct = await verifyLogin(loginEmail, String(req.body.password ?? ""));
   if (!acct) return res.status(401).send(authPage("login", "Wrong email or password.", loginEmail, next ?? undefined));
-  setSession(res, acct.id);
+  setSession(res, acct.id, acct.sessionEpoch);
   res.redirect(next ?? "/dashboard");
 });
 
-app.get("/logout", (_req, res) => {
+app.get("/logout", (req, res) => {
+  // Server-side invalidation: bump the epoch so EVERY outstanding cookie for
+  // this account dies, not just the one in this browser.
+  const acct = currentAccount(req);
+  if (acct) bumpSessionEpoch(acct.id);
   clearSession(res);
   res.redirect("/");
 });
@@ -478,7 +485,8 @@ app.post("/reset/:token", async (req, res) => {
   const consumed = consumeToken(token, "reset"); // single-use: dies here
   if (!consumed) return res.status(400).send(resetPage("", true));
   await setPassword(consumed.accountId, password);
-  setSession(res, consumed.accountId); // rotate session
+  const epoch = bumpSessionEpoch(consumed.accountId); // kill all old sessions
+  setSession(res, consumed.accountId, epoch);
   res.redirect("/dashboard?saved=1");
 });
 
@@ -783,7 +791,8 @@ app.post("/account/password", async (req, res) => {
     return res.redirect("/dashboard?error=" + encodeURIComponent("New password needs at least 8 characters."));
   }
   await setPassword(acct.id, next);
-  setSession(res, acct.id); // rotate
+  const epoch = bumpSessionEpoch(acct.id); // kill every other session
+  setSession(res, acct.id, epoch);
   res.redirect("/dashboard?saved=1");
 });
 
@@ -1367,12 +1376,14 @@ app.get("/connect/:platform/callback", async (req, res) => {
   res.redirect(`${back}${sep}connected=${platform}`);
 });
 
-app.get("/disconnect/:platform", async (req, res) => {
+// POST, not GET: a state change must never ride a link, and the CSRF token
+// must never appear in a URL (history, referrers, logs).
+app.post("/disconnect/:platform", async (req, res) => {
   const acct = currentAccount(req);
   if (!acct) return res.redirect("/login");
   const platform = asPlatform(req.params.platform);
   if (!platform) return res.redirect("/dashboard");
-  if (!csrfOk(acct, req.query.t)) return res.status(403).send(errorPage(500, "csrf"));
+  if (!csrfOk(acct, req.body.csrf)) return res.status(403).send(errorPage(500, "csrf"));
   const conn = acct[platform];
   let partial = false;
   if (conn?.accountId) {
@@ -1396,8 +1407,14 @@ app.get("/disconnect/:platform", async (req, res) => {
 // ---------------------------------------------------------------------------
 
 app.get("/thumb/:clipId", (req, res) => {
+  // Auth + ownership: only the seller whose pipeline handled this clip may
+  // load its thumbnail (clips are public on Whatnot, but this app serves
+  // yours, not the tenant next door's).
+  const acct = currentAccount(req);
+  if (!acct) return res.status(401).end();
   const clipId = req.params.clipId.toLowerCase();
   if (!UUID_RE.test(clipId)) return res.status(404).end();
+  if (!ownsClip(acct.id, clipId)) return res.status(404).end();
   const file = resolve(clipsDir(), `${clipId}.webp`);
   if (!existsSync(file)) return res.status(404).end();
   res.sendFile(file);

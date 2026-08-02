@@ -86,7 +86,39 @@ function log(...a: unknown[]) {
 
 const label: Record<PlatformName, string> = { instagram: "IG", tiktok: "TikTok" };
 
+/**
+ * Provider-level outages (our Zernio account paused for payment, key revoked,
+ * plan capped) are OUR problem, not the seller's clip. Burning their 4-attempt
+ * ladder would permanently fail good clips and show them "post didn't go out"
+ * for something they can't fix. These hold pending, don't consume an attempt,
+ * and raise an operator event instead.
+ */
+function isProviderOutage(error: string): boolean {
+  return /HTTP 40[12]\b|payment required|account paused|PAYMENT_REQUIRED|invalid api key|unauthorized/i.test(error);
+}
+
+let outageLoggedAt = 0;
+function noteOutage(error: string, uname: string): void {
+  const now = Date.now();
+  log(`@${uname}: PROVIDER OUTAGE — holding posts, no attempt burned — ${error}`);
+  if (now - outageLoggedAt > 3600_000) { // one event per hour, not per clip
+    outageLoggedAt = now;
+    logEvent(null, "provider_outage", error.slice(0, 180));
+  }
+}
+
 function scheduleRetryOrFail(row: PostRow, error: string, uname: string): void {
+  if (isProviderOutage(error)) {
+    // hold: same attempts count, retry in 30 minutes
+    updatePost(row.id, {
+      attempts: row.attempts,
+      error,
+      nextRetryAt: new Date(Date.now() + 30 * 60_000).toISOString(),
+      zernioPostId: null,
+    });
+    noteOutage(error, uname);
+    return;
+  }
   const attempts = row.attempts + 1;
   if (attempts >= MAX_ATTEMPTS) {
     updatePost(row.id, { status: "failed", attempts, error, nextRetryAt: null, zernioPostId: null });

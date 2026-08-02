@@ -57,6 +57,8 @@ export interface Account {
   lastLiveAt: string | null;
   /** when the post-show "clips still private" nudge was handled for the latest show */
   publishNudgeAt: string | null;
+  /** session invalidation epoch — bump to kill all outstanding sessions */
+  sessionEpoch: number;
 }
 
 export type PostStatus = "pending" | "posted" | "failed";
@@ -115,6 +117,7 @@ function rowToAccount(r: any): Account {
     firstPostCelebratedAt: r.firstPostCelebratedAt ?? null,
     lastLiveAt: r.lastLiveAt ?? null,
     publishNudgeAt: r.publishNudgeAt ?? null,
+    sessionEpoch: Number(r.sessionEpoch ?? 0),
   };
 }
 
@@ -241,7 +244,7 @@ const ACCOUNT_COLUMNS = new Set([
   "subscriptionStatus", "disabled", "lastFailureEmailAt", "trialEmailSentAt", "email",
   "postingMode", "lastCheckedAt", "captionPreset",
   "captionTouchedAt", "setupSeenAt", "firstPostCelebratedAt",
-  "lastLiveAt", "publishNudgeAt",
+  "lastLiveAt", "publishNudgeAt", "sessionEpoch",
 ]);
 
 /** Patch public fields (settings, platform connections, billing state). */
@@ -481,6 +484,19 @@ export function bumpOrphan(accountId: string, error: string): void {
   getDb().prepare(
     "UPDATE zernio_orphans SET attempts = attempts + 1, lastError = ? WHERE accountId = ?"
   ).run(error.slice(0, 300), accountId);
+}
+
+/** Does this account own any post for this clip? Gates thumbnail serving. */
+export function ownsClip(accountId: string, clipId: string): boolean {
+  const r = getDb().prepare("SELECT 1 AS x FROM posts WHERE accountId = ? AND clipId = ? LIMIT 1").get(accountId, clipId);
+  return Boolean(r);
+}
+
+/** Kill every outstanding session for the account (logout, password change). */
+export function bumpSessionEpoch(accountId: string): number {
+  getDb().prepare("UPDATE accounts SET sessionEpoch = sessionEpoch + 1 WHERE id = ?").run(accountId);
+  const r = getDb().prepare("SELECT sessionEpoch FROM accounts WHERE id = ?").get(accountId) as { sessionEpoch: number } | undefined;
+  return Number(r?.sessionEpoch ?? 0);
 }
 
 /** Any posts rows created since `iso`? A post row exists the moment a public

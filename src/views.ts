@@ -892,6 +892,28 @@ function connectError(code: string, label: string): string {
   }
 }
 
+/**
+ * "Make it public" — the fix-it sheet for the private-clip nudge.
+ * ClipFlow cannot change a setting inside Whatnot (that's their app), so this
+ * is the honest version: dead-simple numbered steps plus a one-tap link to the
+ * seller's own clips page. On iOS/Android that whatnot.com link is a universal
+ * link — it opens the Whatnot APP when installed, and the web page when not.
+ * (Whatnot publishes no documented custom URL scheme for a clip's settings, so
+ * a made-up scheme would silently fail; the universal link is what works.)
+ */
+function makePublicSheet(uname: string): string {
+  return sheet("make-public", "Make it public", `
+    <p>Whatnot keeps new clips <strong>private</strong> until you publish them. ClipFlow can only see public clips &mdash; that&rsquo;s the one step we can&rsquo;t do for you.</p>
+    <ol class="pub-steps">
+      <li><span class="pub-n mono">1</span><div><p class="pub-t">Open your Whatnot clips</p><p class="pub-s">The button below takes you straight there.</p></div></li>
+      <li><span class="pub-n mono">2</span><div><p class="pub-t">Tap the clip you want out</p><p class="pub-s">Newest ones sit at the top.</p></div></li>
+      <li><span class="pub-n mono">3</span><div><p class="pub-t">Flip &ldquo;Make it public&rdquo;</p><p class="pub-s">One tap. That&rsquo;s the whole fix.</p></div></li>
+      <li><span class="pub-n mono">4</span><div><p class="pub-t">Come back and tap Check</p><p class="pub-s">Or just wait &mdash; we look every few minutes.</p></div></li>
+    </ol>`,
+    `<a class="btn btn-block" href="https://www.whatnot.com/user/${esc(uname)}/clips" target="_blank" rel="noopener">Open my Whatnot clips ${icon("external-link")}</a>
+     <button class="btn btn-quiet" type="button" data-sheet-close>Done</button>`);
+}
+
 /** The caption editor sheet — one component, opened from Settings AND Home. */
 function captionSheet(acct: Account): string {
   return sheet("caption", "Caption style", `
@@ -1014,7 +1036,8 @@ export function dashboard(
   if (query.billing === "success") banners += `<div class="banner banner-ok" role="status">${icon("check-circle")}<span>Card added. Posting is unlocked.</span></div>`;
   if (query.error && query.error !== "bad_username") banners += `<div class="banner banner-err" role="alert">${icon("alert")}<span>${esc(decodeURIComponentSafe(query.error))}</span></div>`;
   if (extras.publishNudge && !setupMode) {
-    banners += `<div class="banner banner-warn" role="status">${icon("scissors")}<span><strong>Your last show&rsquo;s clips are still private.</strong> Flip them public &mdash; one tap each &mdash; and they post on their own. <a href="https://www.whatnot.com/user/${esc(uname)}/clips" target="_blank" rel="noopener">Open my Whatnot clips ${icon("external-link")}</a></span></div>`;
+    banners += `<div class="banner banner-warn" role="status">${icon("scissors")}<span><strong>Your last clip is private &mdash; ClipFlow can&rsquo;t see it.</strong> Make it public and it posts itself.
+      <button type="button" class="banner-link" data-sheet-open="make-public">Show me how ${icon("chevron-right")}</button></span></div>`;
   }
 
   if (locked && b?.state === "locked" && !setupMode) {
@@ -1273,7 +1296,7 @@ export function dashboard(
     title: "Home", tab: "home", content, csrf, who: shellWho(acct), admin: acct.isAdmin,
     scripts: ["/js/home.js"],
     noTabs: celebrate,
-    after: celebrate ? "" : clipDemoSheet() + (connected ? captionSheet(acct) + captionIsland(acct) : ""),
+    after: celebrate ? "" : clipDemoSheet() + makePublicSheet(uname) + (connected ? captionSheet(acct) + captionIsland(acct) : ""),
   });
 }
 
@@ -1636,7 +1659,9 @@ export function settingsPage(acct: Account, opts: { csrf: string; active: boolea
     return sheet(`disc-${platform}`, label, `
       <p class="mono" style="font-size:13px"><span class="dot dot-ok"></span> @${esc(conn.username || "connected")}</p>
       <p style="margin-top:var(--s-3)">This ${label} account is locked to your ClipFlow to keep posting stable. Disconnecting stops posting there &mdash; you can connect a different account afterward while your plan is active.</p>`,
-      `<a class="btn btn-quiet" href="/disconnect/${platform}?t=${esc(csrf)}" data-loading-text="Disconnecting&hellip;">Disconnect ${label}</a>
+      `<form method="post" action="/disconnect/${platform}"><input type="hidden" name="csrf" value="${esc(csrf)}">
+         <button class="btn btn-quiet btn-block" type="submit" data-loading-text="Disconnecting&hellip;">Disconnect ${label}</button>
+       </form>
        <button class="btn btn-quiet" type="button" data-sheet-close>Keep it connected</button>`);
   };
 
